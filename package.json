@@ -1,0 +1,16 @@
+{
+  "name": "cloudx-gaming",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CloudX Gaming Center Management System",
+  "scripts": {
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm start",
+    "build:server": "cd server && npm run build",
+    "build:client": "cd client && npm run build",
+    "seed": "cd server && npm run seed",
+    "seed:test-data": "cd server && npm run seed:test-data",
+    "seed:test-data:clean": "cd server && npm run seed:test-data:clean",
+    "test": "cd server && npm test"
+  }
+}
