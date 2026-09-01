@@ -100,11 +100,6 @@ const PC_DEFAULT_DISCOUNT = 10;
   ],
   template: `
     <div class="max-w-2xl mx-auto">
-      <header class="mb-5">
-        <h1 class="page-heading mb-1">Pricing</h1>
-        <p class="text-sm text-text-muted">Tap a category to expand and edit prices</p>
-      </header>
-
       @if (loading()) {
         <div class="space-y-2.5">
           @for (i of [1, 2, 3]; track i) {

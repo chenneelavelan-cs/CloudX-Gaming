@@ -1,0 +1,45 @@
+/* CloudX dark theme — unified red primary */
+:root {
+  --color-primary: #da291c;
+  --color-primary-hover: #b01e0a;
+  --color-primary-muted: #9d2211;
+  --color-on-primary: #ffffff;
+
+  --color-bg: #181818;
+  --color-bg-elevated: #222222;
+  --color-bg-surface: #303030;
+  --color-bg-overlay: rgba(24, 24, 24, 0.94);
+
+  --color-text: #ffffff;
+  --color-text-secondary: #969696;
+  --color-text-muted: #666666;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-medium: rgba(255, 255, 255, 0.12);
+
+  --color-status-active: #03904a;
+  --color-status-warning: #f13a2c;
+  --color-status-danger: #f13a2c;
+  --color-status-info: #4c98b9;
+
+  --font-display: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-text: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Single app skin — no light/dark alternation */
+  --skin-bg: var(--color-bg);
+  --skin-text: var(--color-text);
+  --skin-text-secondary: var(--color-text-secondary);
+  --skin-text-muted: var(--color-text-muted);
+  --skin-link: var(--color-primary);
+  --skin-border: var(--color-border);
+  --skin-card-bg: rgba(255, 255, 255, 0.04);
+  --skin-nav-bg: var(--color-bg);
+  --skin-subnav-bg: rgba(24, 24, 24, 0.92);
+  --skin-accent: var(--color-primary);
+
+  --skin-transition:
+    background-color var(--duration-slow, 400ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--duration-fast, 250ms) var(--ease-smooth-out, cubic-bezier(0.22, 1, 0.36, 1));
+}

@@ -1,9 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, map, startWith } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
+import { PageActionsService } from '../../core/services/page-actions.service';
+import { PageTitleService } from '../../core/services/page-title.service';
 import { IconComponent } from '../../shared/components/icon.component';
 import { SnackbarComponent } from '../../shared/components/snackbar.component';
 
@@ -13,33 +15,96 @@ import { SnackbarComponent } from '../../shared/components/snackbar.component';
   imports: [CommonModule, RouterModule, IconComponent, SnackbarComponent],
   template: `
     <div class="min-h-screen flex flex-col bg-bg-primary">
-      <header class="admin-header">
-        <div class="admin-header-inner">
-          <a routerLink="/admin/dashboard" class="admin-brand" aria-label="CloudX Admin dashboard">
-            <span class="admin-brand-mark" aria-hidden="true">
-              <app-icon name="sports_esports" size="sm" />
-            </span>
-            <span class="admin-brand-copy">
-              <span class="admin-brand-name">CloudX</span>
-              <span class="admin-brand-badge">Admin</span>
-            </span>
+      <nav class="global-nav" aria-label="Global">
+        <div class="global-nav-inner">
+          <a routerLink="/admin/dashboard" class="global-nav-link font-semibold tracking-tight text-text-primary" aria-label="CloudX Admin">
+            CloudX
           </a>
-
-          <button type="button" (click)="logout()" class="admin-logout">
+          <div class="hidden md:flex items-center gap-5">
+            @for (item of allNavItems; track item.path) {
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="!text-white"
+                [routerLinkActiveOptions]="{ exact: item.exact }"
+                class="global-nav-link"
+              >
+                {{ item.label }}
+              </a>
+            }
+          </div>
+          <button type="button" (click)="logout()" class="btn-utility !min-h-[32px] !py-1.5 !px-3">
             <app-icon name="logout" size="sm" />
-            <span>Logout</span>
+            <span class="hidden sm:inline">Sign Out</span>
           </button>
+        </div>
+      </nav>
+
+      <header class="page-top-bar">
+        <div class="page-top-bar-inner">
+          @if (pageBackLink()) {
+            <a [routerLink]="pageBackLink()!" class="page-top-back" aria-label="Go back">
+              <app-icon name="arrow_back" size="sm" />
+            </a>
+          }
+
+          <div class="page-top-copy min-w-0">
+            <div class="flex items-center gap-2 min-w-0">
+              <h1 class="page-top-title">{{ pageTitle() }}</h1>
+              @if (pageBadge() != null && pageBadge() !== '') {
+                <span class="page-top-badge">{{ pageBadge() }}</span>
+              }
+            </div>
+            @if (pageSubtitle()) {
+              <p class="page-top-subtitle">{{ pageSubtitle() }}</p>
+            }
+          </div>
+
+          @if (pageActions().length) {
+            <div class="page-top-actions">
+              @for (action of pageActions(); track action.kind === 'link' ? action.label : action.id) {
+                @if (action.kind === 'link') {
+                  <a
+                    [routerLink]="action.routerLink"
+                    [class]="action.primary ? 'btn-primary page-top-action-btn' : 'btn-secondary page-top-action-btn'"
+                    [attr.aria-label]="action.compact ? action.label : null"
+                    [attr.title]="action.compact ? action.label : null"
+                  >
+                    @if (action.icon) {
+                      <app-icon [name]="action.icon" size="sm" />
+                    }
+                    @if (!action.compact) {
+                      <span>{{ action.label }}</span>
+                    }
+                  </a>
+                } @else {
+                  <button
+                    type="button"
+                    [class]="action.primary ? 'btn-primary page-top-action-btn' : action.danger ? 'btn-danger-soft page-top-action-btn' : 'btn-secondary page-top-action-btn'"
+                    (click)="runAction(action.id)"
+                    [attr.aria-label]="action.compact ? action.label : null"
+                    [attr.title]="action.compact ? action.label : null"
+                  >
+                    @if (action.icon) {
+                      <app-icon [name]="action.icon" size="sm" />
+                    }
+                    @if (!action.compact) {
+                      <span>{{ action.label }}</span>
+                    }
+                  </button>
+                }
+              }
+            </div>
+          }
         </div>
       </header>
 
-      <main class="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-4">
-        <div class="max-w-7xl mx-auto p-4 route-outlet-host">
+      <main class="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-8">
+        <div class="max-w-grid mx-auto px-4 md:px-6 py-4 route-outlet-host">
           <router-outlet />
         </div>
       </main>
 
       <nav class="bottom-nav md:hidden" aria-label="Main navigation">
-        <div class="bottom-nav-glow" aria-hidden="true"></div>
         <div class="bottom-nav-inner">
           @for (item of navItems; track item.path; let i = $index) {
             <a
@@ -57,7 +122,7 @@ import { SnackbarComponent } from '../../shared/components/snackbar.component';
         </div>
       </nav>
 
-      <aside class="hidden md:block fixed left-0 top-14 bottom-0 w-56 bg-bg-primary border-r border-border-subtle p-4">
+      <aside class="hidden md:block fixed left-0 top-[7.25rem] bottom-0 w-56 bg-bg-primary border-r border-border-subtle p-4">
         <nav class="space-y-1">
           @for (item of allNavItems; track item.path) {
             <a
@@ -78,66 +143,8 @@ import { SnackbarComponent } from '../../shared/components/snackbar.component';
   `,
   styles: [
     `
-      .admin-header {
-        @apply sticky top-0 z-40;
-        background: rgba(24, 24, 24, 0.94);
-        backdrop-filter: blur(16px) saturate(1.2);
-        -webkit-backdrop-filter: blur(16px) saturate(1.2);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      .admin-header::after {
-        content: '';
-        @apply absolute inset-x-0 bottom-0 h-px pointer-events-none;
-        background: linear-gradient(
-          90deg,
-          transparent 0%,
-          rgba(218, 41, 28, 0.45) 50%,
-          transparent 100%
-        );
-        opacity: 0.75;
-      }
-
-      .admin-header-inner {
-        @apply relative flex items-center justify-between max-w-7xl mx-auto px-4 h-14;
-      }
-
-      .admin-brand {
-        @apply flex items-center gap-2.5 no-underline min-h-[44px];
-      }
-
-      .admin-brand-mark {
-        @apply flex items-center justify-center w-8 h-8 rounded-lg text-white shrink-0;
-        background: linear-gradient(180deg, #e23a2c 0%, #c22118 100%);
-        box-shadow: 0 0 14px rgba(218, 41, 28, 0.28);
-      }
-
-      .admin-brand-copy {
-        @apply flex items-center gap-2;
-      }
-
-      .admin-brand-name {
-        @apply text-[15px] font-bold tracking-tight text-text-primary leading-none;
-      }
-
-      .admin-brand-badge {
-        @apply inline-flex items-center h-5 px-1.5 rounded-md text-[10px] font-semibold uppercase tracking-caption text-text-secondary bg-white/[0.06] border border-border leading-none;
-      }
-
-      .admin-logout {
-        @apply inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border text-text-secondary text-[11px] font-semibold uppercase tracking-nav transition-colors min-h-[36px];
-      }
-
-      .admin-logout:hover {
-        @apply text-text-primary bg-white/[0.05] border-border-medium;
-      }
-
-      .admin-logout:active {
-        @apply scale-[0.98];
-      }
-
       .route-outlet-host {
-        min-height: calc(100vh - 8rem);
+        min-height: calc(100vh - 9rem);
       }
 
       @media (min-width: 768px) {
@@ -145,99 +152,26 @@ import { SnackbarComponent } from '../../shared/components/snackbar.component';
           margin-left: 14rem;
         }
       }
-
-      .bottom-nav {
-        @apply fixed bottom-0 left-0 right-0 z-40;
-        padding-bottom: env(safe-area-inset-bottom, 0);
-        background: linear-gradient(to top, rgba(24, 24, 24, 0.98) 70%, rgba(24, 24, 24, 0.88));
-        backdrop-filter: blur(20px) saturate(1.2);
-        -webkit-backdrop-filter: blur(20px) saturate(1.2);
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-      }
-
-      .bottom-nav-glow {
-        @apply absolute inset-x-0 top-0 h-px pointer-events-none;
-        background: linear-gradient(
-          90deg,
-          transparent 0%,
-          rgba(218, 41, 28, 0.35) 50%,
-          transparent 100%
-        );
-        opacity: 0.6;
-      }
-
-      .bottom-nav-inner {
-        @apply relative grid grid-cols-5 pt-1.5 pb-2;
-      }
-
-      .bottom-nav-link {
-        @apply relative flex flex-col items-center justify-center gap-1 py-1 min-h-[3.25rem] text-text-muted no-underline;
-        -webkit-tap-highlight-color: transparent;
-      }
-
-      .bottom-nav-link::before {
-        content: '';
-        @apply absolute top-0 left-1/2 rounded-full pointer-events-none;
-        width: 18px;
-        height: 2.5px;
-        background: #da291c;
-        transform: translateX(-50%) scaleX(0);
-        opacity: 0;
-        transition:
-          transform 0.22s cubic-bezier(0.32, 0.72, 0, 1),
-          opacity 0.18s ease;
-      }
-
-      .bottom-nav-icon {
-        @apply flex items-center justify-center w-11 h-8;
-        transition: color 0.2s ease, transform 0.18s ease;
-      }
-
-      .bottom-nav-label {
-        @apply text-[9px] font-semibold uppercase tracking-[0.55px] leading-none;
-        transition: color 0.2s ease, opacity 0.2s ease;
-      }
-
-      .bottom-nav-link-active {
-        @apply text-accent;
-      }
-
-      .bottom-nav-link-active::before {
-        transform: translateX(-50%) scaleX(1);
-        opacity: 1;
-      }
-
-      .bottom-nav-link-active .bottom-nav-label {
-        @apply text-accent;
-      }
-
-      .bottom-nav-link:not(.bottom-nav-link-active) .bottom-nav-label {
-        @apply opacity-80;
-      }
-
-      .bottom-nav-link:active .bottom-nav-icon {
-        transform: scale(0.92);
-      }
-
-      .sidebar-link {
-        @apply flex items-center gap-3 px-4 py-3 rounded-lg text-text-secondary hover:bg-white/[0.04] transition-colors uppercase tracking-nav text-sm font-semibold no-underline;
-      }
-
-      .sidebar-link-active {
-        @apply bg-white/[0.06] text-accent;
-      }
-
-      .sidebar-link-active span {
-        @apply text-accent;
-      }
     `,
   ],
 })
 export class AdminLayoutComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private pageTitleService = inject(PageTitleService);
+  private pageActionsService = inject(PageActionsService);
 
   activeIndex = signal(0);
+  routeTitle = signal('Dashboard');
+  routeSubtitle = signal<string | undefined>(undefined);
+  routeBackLink = signal<string | string[] | undefined>(undefined);
+
+  pageTitle = computed(() => this.pageTitleService.meta()?.title ?? this.routeTitle());
+  pageSubtitle = computed(() => this.pageTitleService.meta()?.subtitle ?? this.routeSubtitle());
+  pageBackLink = computed(() => this.pageTitleService.meta()?.backLink ?? this.routeBackLink());
+  pageBadge = computed(() => this.pageTitleService.meta()?.badge);
+  pageActions = this.pageActionsService.actions;
 
   navItems = [
     { path: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', exact: true },
@@ -262,7 +196,18 @@ export class AdminLayoutComponent {
         startWith(this.resolveActiveIndex()),
         takeUntilDestroyed(),
       )
-      .subscribe((index) => this.activeIndex.set(index));
+      .subscribe((index) => {
+        this.activeIndex.set(index);
+        this.routeTitle.set(this.resolveRouteData('title') ?? 'Dashboard');
+        this.routeSubtitle.set(this.resolveRouteData('subtitle') as string | undefined);
+        this.routeBackLink.set(this.resolveRouteData('backLink') as string | string[] | undefined);
+        this.pageTitleService.clear();
+        this.pageActionsService.clear();
+      });
+  }
+
+  runAction(id: string) {
+    this.pageActionsService.run(id);
   }
 
   logout() {
@@ -275,5 +220,15 @@ export class AdminLayoutComponent {
       item.exact ? url === item.path : url.startsWith(item.path),
     );
     return index >= 0 ? index : 0;
+  }
+
+  private resolveRouteData(key: string): string | undefined {
+    let child = this.route.firstChild;
+    while (child?.firstChild) {
+      child = child.firstChild;
+    }
+    const value = child?.snapshot.data[key];
+    if (value != null) return value as string;
+    return undefined;
   }
 }

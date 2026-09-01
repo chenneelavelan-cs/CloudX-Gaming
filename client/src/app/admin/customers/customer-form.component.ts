@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CustomerService } from '../../core/services/domain.service';
+import { PageTitleService } from '../../core/services/page-title.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { IconComponent } from '../../shared/components/icon.component';
 import { validateRequiredFields } from '../../shared/utils/form-validation';
@@ -12,14 +13,7 @@ import { validateRequiredFields } from '../../shared/utils/form-validation';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule, IconComponent],
   template: `
-    <a [routerLink]="backLink()" class="text-text-secondary text-sm mb-4 inline-flex items-center gap-1">
-      <app-icon name="arrow_back" size="sm" />
-      Back
-    </a>
-
-    <h1 class="page-heading">{{ isEdit() ? 'Edit Customer' : 'New Customer' }}</h1>
-
-    <form (ngSubmit)="onSubmit()" class="space-y-4 max-w-lg">
+    <form (ngSubmit)="onSubmit()" class="form-page space-y-4 max-w-lg">
       <div>
         <label class="label">Name</label>
         <input id="customer-form-name" class="input" [(ngModel)]="form.name" name="name" placeholder="Customer name" />
@@ -29,15 +23,15 @@ import { validateRequiredFields } from '../../shared/utils/form-validation';
         <input id="customer-form-phone" class="input" [(ngModel)]="form.phone" name="phone" placeholder="Phone number" />
       </div>
       <div>
-        <label class="label">Email (optional)</label>
+        <label class="label">Email</label>
         <input class="input" [(ngModel)]="form.email" name="email" type="email" placeholder="email@example.com" />
       </div>
       <div>
-        <label class="label">Notes (optional)</label>
+        <label class="label">Notes</label>
         <textarea class="input min-h-[96px]" [(ngModel)]="form.notes" name="notes" placeholder="Preferences, reminders..."></textarea>
       </div>
       <div>
-        <label class="label">Tags (optional)</label>
+        <label class="label">Tags</label>
         <input class="input" [(ngModel)]="form.tagsInput" name="tags" placeholder="vip, regular (comma separated)" />
       </div>
 
@@ -53,6 +47,7 @@ export class CustomerFormComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private snackbar = inject(SnackbarService);
+  private pageTitleService = inject(PageTitleService);
 
   isEdit = signal(false);
   customerId = signal<string | null>(null);
@@ -78,6 +73,11 @@ export class CustomerFormComponent implements OnInit {
           this.form.email = c.email || '';
           this.form.notes = c.notes || '';
           this.form.tagsInput = (c.tags || []).join(', ');
+          this.pageTitleService.set({
+            title: 'Edit Customer',
+            subtitle: c.name,
+            backLink: `/admin/customers/${id}`,
+          });
         },
         error: () => {
           this.snackbar.error('Customer not found');
@@ -85,11 +85,6 @@ export class CustomerFormComponent implements OnInit {
         },
       });
     }
-  }
-
-  backLink() {
-    const id = this.customerId();
-    return id ? `/admin/customers/${id}` : '/admin/customers';
   }
 
   onSubmit() {

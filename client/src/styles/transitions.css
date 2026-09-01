@@ -202,11 +202,11 @@
   --acc-chevron: 250ms;
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Toast open / close */
-  --toast-open: 350ms;
-  --toast-close: 250ms;
-  --toast-distance: 16px;
-  --toast-blur: 2px;
-  --toast-scale: 0.97;
+  --toast-open: 400ms;
+  --toast-close: 280ms;
+  --toast-distance: 24px;
+  --toast-blur: 3px;
+  --toast-scale: 0.94;
   --toast-ease: cubic-bezier(0.22, 1, 0.36, 1);
   /* Like button */
   --like-color: #f40051;
@@ -282,7 +282,7 @@
 }
 
 
-/* Dark theme overrides for transitions-dev color tokens */
+/* Dark theme — transitions-dev color tokens */
 :root {
   --shimmer-base: rgba(255, 255, 255, 0.35);
   --shimmer-highlight: rgba(255, 255, 255, 0.85);

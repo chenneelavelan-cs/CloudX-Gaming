@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
 import { BillService, CustomerService } from '../../core/services/domain.service';
+import { PageActionsService } from '../../core/services/page-actions.service';
 import { Bill, BillItem, Customer, PaginatedResponse } from '../../shared/models';
 import { InrPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
@@ -17,21 +18,13 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
   imports: [CommonModule, RouterModule, InrPipe, IconComponent, InfiniteScrollDirective, TabsSlidingDirective, PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, NumberPopInComponent],
   template: `
     <div class="t-page-enter" tPageEnter>
-    <div class="flex items-center justify-between mb-5">
-      <h1 class="page-heading mb-0">Bills</h1>
-      <a routerLink="/admin/bills/new" class="btn-primary text-sm py-2 px-4 min-h-0">
-        <app-icon name="add" size="sm" />
-        New Bill
-      </a>
-    </div>
-
     <div class="grid grid-cols-2 gap-3 mb-5">
-      <div class="stat-card bg-gradient-to-br from-status-active/10 to-transparent border-status-active/20">
+      <div class="stat-card border-[rgba(36,138,61,0.25)] bg-[rgba(36,138,61,0.06)]">
         <p class="text-2xl font-semibold text-status-active tabular-nums leading-none"><app-number-pop-in [value]="paidCount()" /></p>
         <p class="text-[10px] uppercase tracking-caption text-text-muted">Paid bills</p>
       </div>
       <div class="stat-card">
-        <p class="text-2xl font-semibold tabular-nums leading-none"><app-number-pop-in [value]="paidTotal() | inr" /></p>
+        <p class="text-2xl font-semibold tabular-nums leading-none text-accent"><app-number-pop-in [value]="paidTotal() | inr" /></p>
         <p class="text-[10px] uppercase tracking-caption text-text-muted">Total collected</p>
       </div>
     </div>
@@ -55,21 +48,21 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
       @for (bill of filteredBills(); track bill._id; let i = $index) {
         <button
           type="button"
-          class="t-list-item relative w-full flex items-center gap-3 text-left rounded-xl border border-border bg-gradient-to-r from-white/[0.04] to-white/[0.02] p-3.5 overflow-hidden transition-all duration-200 hover:border-border-medium hover:from-white/[0.07] hover:to-white/[0.03] active:scale-[0.985]"
+          class="list-row t-list-item relative w-full text-left !py-3.5 !px-4 overflow-hidden active:scale-[0.985]"
           [style.--i]="i"
           (click)="openBill(bill)"
         >
           <span
-            class="absolute left-0 top-0 bottom-0 w-1"
-            [ngClass]="isPaid(bill) ? 'bg-status-active' : 'bg-text-muted/40'"
+            class="session-card-accent"
+            [ngClass]="isPaid(bill) ? 'bg-status-active' : 'bg-border-medium'"
           ></span>
 
           <div
-            class="flex items-center justify-center w-11 h-11 rounded-xl shrink-0 ml-1 ring-1"
+            class="list-row-icon ml-1"
             [ngClass]="
               isPaid(bill)
-                ? 'bg-status-active/15 text-status-active ring-status-active/20'
-                : 'bg-white/6 text-text-muted ring-white/8'
+                ? 'bg-[rgba(36,138,61,0.1)] text-status-active'
+                : ''
             "
           >
             <app-icon name="receipt_long" size="sm" />
@@ -83,7 +76,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
               }
             </div>
             <p class="text-text-muted text-xs mt-0.5 truncate font-mono">{{ bill.billNumber }}</p>
-            <p class="text-text-muted/70 text-[11px] mt-0.5 truncate">
+            <p class="text-text-muted text-[11px] mt-0.5 truncate">
               {{ bill.createdAt | date:'MMM d · h:mm a' }}
               @if (isPaid(bill) && bill.paymentMethod) {
                 <span> · {{ paymentLabel(bill.paymentMethod) }}</span>
@@ -92,7 +85,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
           </div>
 
           <div class="text-right shrink-0">
-            <p class="font-semibold text-lg tabular-nums leading-none"><app-number-pop-in [value]="bill.total | inr" /></p>
+            <p class="font-semibold text-lg tabular-nums leading-none text-accent"><app-number-pop-in [value]="bill.total | inr" /></p>
             @if (isPaid(bill)) {
               <span class="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold uppercase tracking-caption text-status-active">
                 <app-icon name="check_circle" size="sm" class="!text-[12px]" />
@@ -101,10 +94,10 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
             }
           </div>
 
-          <app-icon name="chevron_right" size="sm" class="text-text-muted/40 shrink-0" />
+          <app-icon name="chevron_right" size="sm" class="text-text-muted shrink-0" />
         </button>
       } @empty {
-        <div class="rounded-xl border border-border bg-white/[0.02] text-center py-12 px-4">
+        <div class="card text-center py-12 px-4">
           <div class="flex justify-center mb-3 text-text-muted opacity-30">
             <app-icon name="receipt_long" size="xl" />
           </div>
@@ -143,52 +136,39 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
     @if (selectedBill(); as bill) {
       <div class="fixed inset-0 z-[100]" role="presentation">
         <div
-          class="absolute inset-0 bg-black/75 backdrop-blur-[6px] transition-opacity duration-300 ease-out"
+          class="bottom-sheet-backdrop"
           [class.opacity-100]="sheetOpen()"
           [class.opacity-0]="!sheetOpen()"
           [class.pointer-events-none]="!sheetOpen()"
           (click)="closeBill()"
         ></div>
         <div
-          class="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-[#1a1a1a] border border-border-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:rounded-2xl md:mb-0"
-          [class.translate-y-0]="sheetOpen()"
-          [class.opacity-100]="sheetOpen()"
-          [class.translate-y-full]="!sheetOpen()"
-          [class.opacity-0]="!sheetOpen()"
+          class="bottom-sheet t-panel"
+          [class.is-open]="sheetOpen()"
           [class.pointer-events-none]="!sheetOpen()"
-          style="box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);"
           role="dialog"
           aria-modal="true"
           [attr.aria-labelledby]="'bill-sheet-title'"
           (click)="$event.stopPropagation()"
         >
-          <div class="sticky top-0 z-10 pt-3 pb-2 md:hidden bg-gradient-to-b from-[#1a1a1a] 80% to-transparent">
-            <div class="mx-auto h-1 w-11 rounded-full bg-white/30"></div>
+          <div class="bottom-sheet-grab" aria-hidden="true">
+            <div class="bottom-sheet-handle"></div>
           </div>
 
-          <div class="relative px-5 pt-2 md:pt-5 pb-5 border-b border-border-subtle overflow-hidden">
-            <div
-              class="absolute -top-12 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none"
-              [ngClass]="isPaid(bill) ? 'bg-status-active/10' : 'bg-accent/10'"
-            ></div>
-            <div class="flex items-start justify-between gap-3 relative">
-              <div class="min-w-0">
-                <p class="text-[2.5rem] font-semibold tracking-tight leading-none tabular-nums">{{ bill.total | inr }}</p>
+          <div class="bottom-sheet-header">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="text-3xl font-bold tracking-tight leading-none tabular-nums text-accent">{{ bill.total | inr }}</p>
                 <p id="bill-sheet-title" class="text-text-secondary text-sm mt-2 font-mono truncate">{{ bill.billNumber }}</p>
                 <p class="text-text-muted text-xs mt-1">{{ bill.createdAt | date:'EEEE, MMM d · h:mm a' }}</p>
               </div>
-              <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-2 shrink-0 pt-1">
                 @if (bill.paymentStatus === 'cancelled') {
                   <span class="badge-danger">Cancelled</span>
                 } @else {
                   <span class="badge-active">Paid</span>
                 }
-                <button
-                  type="button"
-                  class="flex items-center justify-center w-9 h-9 rounded-full text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors"
-                  (click)="closeBill()"
-                  aria-label="Close"
-                >
+                <button type="button" class="bottom-sheet-close" (click)="closeBill()" aria-label="Close">
                   <app-icon name="close" size="sm" />
                 </button>
               </div>
@@ -198,7 +178,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
           <section class="px-5 py-4 border-b border-border-subtle">
             <p class="section-heading mb-3">Customer</p>
             <div class="flex items-center gap-3">
-              <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-accent/12 text-accent text-sm font-semibold shrink-0 ring-1 ring-accent/20">
+              <div class="list-row-icon !w-12 !h-12 !rounded-lg text-sm font-semibold bg-accent/15 text-accent">
                 {{ initials(customerName(bill)) }}
               </div>
               <div class="flex-1 min-w-0">
@@ -218,7 +198,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
                 @if (selectedCustomer()?.tags?.length) {
                   <div class="flex flex-wrap gap-1 mt-2">
                     @for (tag of selectedCustomer()!.tags!.slice(0, 3); track tag) {
-                      <span class="px-2 py-0.5 rounded-full bg-white/[0.06] text-[10px] font-medium text-text-secondary uppercase tracking-caption">{{ tag }}</span>
+                      <span class="badge-info text-[10px] py-0.5">{{ tag }}</span>
                     }
                   </div>
                 }
@@ -227,12 +207,12 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
 
             @if (selectedCustomer(); as customer) {
               <div class="grid grid-cols-2 gap-2 mt-4">
-                <div class="rounded-xl bg-white/[0.04] border border-border-subtle px-3 py-2.5">
+                <div class="store-utility-card !p-3">
                   <p class="text-sm font-semibold tabular-nums">{{ customer.totalVisits }}</p>
                   <p class="text-[10px] uppercase tracking-caption text-text-muted mt-0.5">Visits</p>
                 </div>
-                <div class="rounded-xl bg-white/[0.04] border border-border-subtle px-3 py-2.5">
-                  <p class="text-sm font-semibold tabular-nums">{{ customer.totalSpending | inr }}</p>
+                <div class="store-utility-card !p-3">
+                  <p class="text-sm font-semibold tabular-nums text-accent">{{ customer.totalSpending | inr }}</p>
                   <p class="text-[10px] uppercase tracking-caption text-text-muted mt-0.5">Total spent</p>
                 </div>
               </div>
@@ -250,7 +230,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
             <p class="section-heading mb-2">Items · {{ bill.items.length }}</p>
             @for (item of bill.items; track $index) {
               <div class="flex items-center gap-3 py-3.5 border-b border-border-subtle last:border-b-0">
-                <div class="flex items-center justify-center w-10 h-10 rounded-xl shrink-0" [class]="lineIconClass(item)">
+                <div class="list-row-icon !rounded-md" [class]="lineIconClass(item)">
                   <app-icon [name]="itemIcon(item)" size="sm" />
                 </div>
                 <div class="flex-1 min-w-0">
@@ -276,19 +256,19 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
                 <span class="tabular-nums">{{ bill.subtotal | inr }}</span>
               </div>
               @if (bill.discountAmount) {
-                <div class="flex justify-between text-emerald-400">
+                <div class="flex justify-between text-status-active">
                   <span>Discount</span>
                   <span class="tabular-nums">−{{ bill.discountAmount | inr }}</span>
                 </div>
               }
               <div class="flex items-center justify-between pt-3 mt-2 border-t border-dashed border-border-medium">
                 <span class="font-medium">Total</span>
-                <span class="text-xl font-semibold tabular-nums">{{ bill.total | inr }}</span>
+                <span class="text-xl font-semibold tabular-nums text-accent">{{ bill.total | inr }}</span>
               </div>
             </div>
 
             @if (isPaid(bill) && bill.paymentMethod) {
-              <div class="flex items-center gap-2.5 mt-4 px-3.5 py-2.5 rounded-xl bg-status-active/10 border border-status-active/20">
+              <div class="flex items-center gap-2.5 mt-4 px-3.5 py-2.5 rounded-lg bg-[rgba(36,138,61,0.08)] border border-[rgba(36,138,61,0.25)]">
                 <app-icon name="check_circle" size="sm" class="text-status-active" />
                 <div class="text-xs">
                   <p class="font-medium text-status-active">Paid via {{ paymentLabel(bill.paymentMethod) }}</p>
@@ -303,7 +283,7 @@ type BillFilter = 'all' | 'paid' | 'cancelled';
           @if (bill.notes) {
             <section class="px-5 py-4 border-b border-border-subtle">
               <p class="section-heading mb-2">Notes</p>
-              <p class="text-sm text-text-secondary leading-relaxed rounded-xl bg-white/[0.03] border border-border-subtle px-3.5 py-3">{{ bill.notes }}</p>
+              <p class="text-sm text-text-secondary leading-relaxed store-utility-card !p-3.5">{{ bill.notes }}</p>
             </section>
           }
 
@@ -317,6 +297,7 @@ export class BillsListComponent implements OnInit, OnDestroy {
   private billService = inject(BillService);
   private customerService = inject(CustomerService);
   private router = inject(Router);
+  private pageActionsService = inject(PageActionsService);
 
   bills = signal<Bill[]>([]);
   selectedBill = signal<Bill | null>(null);
@@ -343,6 +324,9 @@ export class BillsListComponent implements OnInit, OnDestroy {
   filterIndex = computed(() => this.filters.findIndex((f) => f.key === this.filter()));
 
   ngOnInit() {
+    this.pageActionsService.set([
+      { kind: 'link', label: 'New Bill', routerLink: '/admin/bills/new', icon: 'add', primary: true },
+    ]);
     this.loadBills();
   }
 
@@ -487,10 +471,10 @@ export class BillsListComponent implements OnInit, OnDestroy {
   }
 
   lineIconClass(item: BillItem): string {
-    if (item.type === 'gaming') return 'bg-accent/12 text-accent';
-    if (item.type === 'product') return 'bg-emerald-500/12 text-emerald-400';
-    if (item.type === 'combo') return 'bg-violet-500/12 text-violet-400';
-    return 'bg-white/[0.08] text-text-secondary';
+    if (item.type === 'gaming') return 'bg-[rgba(0,102,204,0.1)] text-accent';
+    if (item.type === 'product') return 'bg-[rgba(36,138,61,0.1)] text-status-active';
+    if (item.type === 'combo') return 'bg-[rgba(0,102,204,0.08)] text-status-info';
+    return 'bg-bg-elevated text-text-secondary';
   }
 
   paymentLabel(method: string): string {

@@ -7,187 +7,161 @@ import { Customer, CustomerFormValue } from '../models';
 import { rankCustomers } from '../utils/customer-ranking';
 import { validateRequiredFields } from '../utils/form-validation';
 import { IconComponent } from './icon.component';
-import { TabsSlidingDirective, OpenCloseDirective, InlineLoaderComponent } from '../transitions';
+import { OpenCloseDirective, InlineLoaderComponent, transitionMs } from '../transitions';
 
 @Component({
   selector: 'app-customer-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent, TabsSlidingDirective, OpenCloseDirective, InlineLoaderComponent],
-  styles: [
-    `
-      .customer-match-highlight {
-        @apply bg-accent/10;
-      }
-      .search-field {
-        @apply relative;
-      }
-      .search-dropdown {
-        @apply absolute left-0 right-0 top-full mt-1 z-50 max-h-60 overflow-y-auto rounded-lg border border-border bg-bg-primary shadow-lg shadow-black/30;
-      }
-    `,
-  ],
+  imports: [CommonModule, FormsModule, IconComponent, OpenCloseDirective, InlineLoaderComponent],
   template: `
-    <div class="space-y-3">
-      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <label class="label mb-0">{{ label }}</label>
-        <div
-          class="app-tabs app-tabs--compact shrink-0 self-start sm:self-auto"
-          role="tablist"
-          [tTabsActiveIndex]="linkExisting() ? 0 : 1"
-        >
-          <span class="t-tabs-pill" aria-hidden="true"></span>
-          <button
-            type="button"
-            class="t-tab"
-            role="tab"
-            [attr.aria-selected]="linkExisting()"
-            (click)="setLinkExisting(true)"
-          >
-            <app-icon name="person_search" size="sm" />
-            Link existing
-          </button>
-          <button
-            type="button"
-            class="t-tab"
-            role="tab"
-            [attr.aria-selected]="!linkExisting()"
-            (click)="setLinkExisting(false)"
-          >
-            <app-icon name="edit_note" size="sm" />
-            Enter manually
-          </button>
-        </div>
+    <div class="customer-link" [class.is-open]="showDropdown()">
+      <div class="customer-link-head">
+        <span class="customer-link-label">
+          {{ label }}
+          @if (required) {
+            <span class="text-accent ml-0.5">*</span>
+          }
+        </span>
+        <button type="button" class="customer-link-add" (click)="openAddDialog()">
+          <app-icon name="person_add" size="sm" />
+          New customer
+        </button>
       </div>
 
-      @if (linkExisting()) {
-        <div class="search-field">
-          @if (selectedCustomer() && !showDropdown()) {
-            <div class="input flex items-center gap-2 min-h-[48px] cursor-text" (click)="reopenSearch()">
-              <app-icon name="check_circle" size="sm" class="text-status-active shrink-0" />
-              <span class="font-medium truncate">{{ selectedCustomer()!.name }}</span>
-              <span class="text-text-muted text-sm font-mono truncate">{{ selectedCustomer()!.phone }}</span>
-              <button
-                type="button"
-                (click)="clearLinked($event)"
-                class="text-text-muted hover:text-text-primary ml-auto shrink-0 p-1 rounded-md hover:bg-white/[0.06]"
-              >
-                <app-icon name="close" size="sm" />
-              </button>
-            </div>
-          } @else {
-            <div class="relative t-input-wrap">
-              <div class="t-input relative">
-                <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
-                  <app-icon name="search" size="sm" />
-                </span>
-                <input
-                  type="text"
-                  class="input !pl-11 t-clear-input"
-                  [class.has-value]="!!query.trim()"
-                  [placeholder]="placeholder"
-                  [(ngModel)]="query"
-                  (input)="onSearchInput()"
-                  (focus)="onSearchFocus()"
-                  (blur)="onBlur()"
-                />
-                @if (query.trim()) {
-                  <button
-                    type="button"
-                    class="t-clear-btn absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
-                    (mousedown)="clearQuery($event)"
-                    aria-label="Clear search"
-                  >
-                    <app-icon name="close" size="sm" />
-                  </button>
-                }
-              </div>
-            </div>
-
-            @if (showDropdown()) {
-              <div
-                class="search-dropdown t-dropdown"
-                data-origin="top-center"
-                [class.is-open]="dropdownOpen()"
-                [tOpenClose]="dropdownOpen()"
-              >
-                @if (loading() && rankedResults().length === 0) {
-                  <app-inline-loader label="Loading customers…" [compact]="true" />
-                } @else if (rankedResults().length === 0) {
-                  <p class="px-4 py-3 text-sm text-text-muted">
-                    {{ query.trim() ? 'No customers found' : 'No customers yet' }}
-                  </p>
-                } @else {
-                  @for (c of rankedResults(); track c._id) {
-                    <button
-                      type="button"
-                      (mousedown)="selectCustomer(c)"
-                      class="w-full text-left px-4 py-3 hover:bg-white/[0.04] border-b border-border-subtle last:border-b-0 flex items-center gap-3"
-                    >
-                      <div class="flex-1 min-w-0">
-                        <p class="font-medium truncate">{{ c.name }}</p>
-                        @if (c.totalVisits > 0) {
-                          <p class="text-text-muted text-xs mt-0.5">{{ c.totalVisits }} visit{{ c.totalVisits === 1 ? '' : 's' }}</p>
-                        }
-                      </div>
-                      <span class="text-text-muted text-sm shrink-0 font-mono">{{ c.phone }}</span>
-                    </button>
-                  }
-                }
-              </div>
-            }
-          }
-        </div>
-      } @else {
-        <div class="space-y-3">
-          <div class="t-input-wrap">
-            <label class="label">Name</label>
-            <input
-              [id]="nameFieldId"
-              class="input t-input"
-              [(ngModel)]="manualName"
-              (ngModelChange)="onManualChange()"
-              placeholder="Customer name"
-            />
+      @if (selectedCustomer() && !showDropdown()) {
+        <div class="customer-link-selected" (click)="reopenSearch()">
+          <div class="customer-link-avatar">{{ initials(selectedCustomer()!.name) }}</div>
+          <div class="min-w-0 flex-1">
+            <p class="customer-link-name">{{ selectedCustomer()!.name }}</p>
+            <p class="customer-link-phone">{{ selectedCustomer()!.phone }}</p>
           </div>
-          <div class="t-input-wrap">
-            <label class="label">Phone</label>
-            <input
-              [id]="phoneFieldId"
-              class="input t-input"
-              [(ngModel)]="manualPhone"
-              (ngModelChange)="onManualChange()"
-              placeholder="Phone number"
-            />
-            @if (addError()) {
-              <p class="t-error-msg text-status-danger text-xs mt-1">{{ addError() }}</p>
-            }
-          </div>
-          @if (manualSaved()) {
-            <p class="text-status-active text-xs flex items-center gap-1">
-              <app-icon name="check_circle" size="sm" />
-              Customer saved to directory
-            </p>
-          }
           <button
             type="button"
-            (click)="createCustomer()"
-            class="btn-secondary w-full text-sm py-2 min-h-0"
-            [disabled]="adding()"
+            class="customer-link-clear"
+            (click)="clearLinked($event)"
+            aria-label="Remove linked customer"
           >
-            <app-icon name="person_add" size="sm" />
-            {{ adding() ? 'Adding...' : 'Add customer' }}
+            <app-icon name="close" size="sm" />
           </button>
+        </div>
+      } @else {
+        <div class="customer-link-input-wrap">
+          <span class="customer-link-input-icon">
+            <app-icon name="search" size="sm" />
+          </span>
+          <input
+            type="text"
+            class="customer-link-input"
+            [placeholder]="placeholder"
+            [(ngModel)]="query"
+            (input)="onSearchInput()"
+            (focus)="onSearchFocus()"
+            (blur)="onBlur()"
+          />
+          @if (query.trim()) {
+            <button
+              type="button"
+              class="customer-link-input-clear"
+              (mousedown)="clearQuery($event)"
+              aria-label="Clear search"
+            >
+              <app-icon name="close" size="sm" />
+            </button>
+          }
+
+          @if (showDropdown()) {
+            <div
+              class="customer-link-dropdown t-dropdown"
+              data-origin="top-center"
+              [class.is-open]="dropdownOpen()"
+              [tOpenClose]="dropdownOpen()"
+            >
+              @if (loading() && rankedResults().length === 0) {
+                <div class="px-4 py-3">
+                  <app-inline-loader label="Searching…" [compact]="true" />
+                </div>
+              } @else if (rankedResults().length === 0) {
+                <div class="px-4 py-5 text-center">
+                  <p class="text-sm text-text-muted">
+                    {{ query.trim() ? 'No matches' : 'No customers yet' }}
+                  </p>
+                  <button type="button" class="customer-link-add mt-2 justify-center w-full" (mousedown)="openAddDialogFromEmpty($event)">
+                    Create customer
+                  </button>
+                </div>
+              } @else {
+                @for (c of rankedResults(); track c._id) {
+                  <button type="button" class="customer-link-option" (mousedown)="selectCustomer(c)">
+                    <div class="customer-link-option-avatar">{{ initials(c.name) }}</div>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-medium text-sm truncate">{{ c.name }}</p>
+                      @if (c.totalVisits > 0) {
+                        <p class="text-text-muted text-xs mt-0.5">{{ c.totalVisits }} visit{{ c.totalVisits === 1 ? '' : 's' }}</p>
+                      }
+                    </div>
+                    <span class="text-text-muted text-xs font-mono shrink-0">{{ c.phone }}</span>
+                  </button>
+                }
+              }
+            </div>
+          }
         </div>
       }
     </div>
+
+    @if (addDialogOpen()) {
+      <div class="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-labelledby="add-customer-title">
+        <div
+          class="bottom-sheet-backdrop"
+          [class.opacity-100]="addDialogAnimOpen()"
+          [class.opacity-0]="!addDialogAnimOpen()"
+          [class.pointer-events-none]="!addDialogAnimOpen()"
+          (click)="closeAddDialog()"
+        ></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            class="rounded-2xl border border-border bg-bg-primary w-full max-w-sm !p-5 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] pointer-events-auto shadow-2xl shadow-black/50"
+            [class.opacity-100]="addDialogAnimOpen()"
+            [class.scale-100]="addDialogAnimOpen()"
+            [class.opacity-0]="!addDialogAnimOpen()"
+            [class.scale-95]="!addDialogAnimOpen()"
+            [class.pointer-events-none]="!addDialogAnimOpen()"
+            (click)="$event.stopPropagation()"
+          >
+            <h2 id="add-customer-title" class="font-semibold text-lg mb-0.5">New customer</h2>
+            <p class="text-text-muted text-sm mb-5">Create and link to this record.</p>
+
+            <div class="space-y-3 mb-5">
+              <div>
+                <label class="label" [for]="nameFieldId">Name</label>
+                <input [id]="nameFieldId" class="input" [(ngModel)]="manualName" placeholder="Customer name" autocomplete="off" />
+              </div>
+              <div>
+                <label class="label" [for]="phoneFieldId">Phone</label>
+                <input [id]="phoneFieldId" class="input" [(ngModel)]="manualPhone" placeholder="Phone number" autocomplete="off" />
+                @if (addError()) {
+                  <p class="text-status-danger text-xs mt-1">{{ addError() }}</p>
+                }
+              </div>
+            </div>
+
+            <button type="button" class="btn-primary w-full text-sm mb-2" [disabled]="adding()" (click)="createCustomer()">
+              <app-icon name="person_add" size="sm" />
+              {{ adding() ? 'Creating…' : 'Create & link' }}
+            </button>
+            <button type="button" class="btn-secondary w-full text-sm" (click)="closeAddDialog()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class CustomerSearchComponent {
   private customerService = inject(CustomerService);
   private snackbar = inject(SnackbarService);
 
-  @Input() label = 'Customer (optional)';
-  @Input() placeholder = 'Search by name or phone...';
+  @Input() label = 'Customer';
+  @Input() placeholder = 'Search name or phone…';
   @Input() required = false;
   @Input() nameFieldId = 'customer-name-field';
   @Input() phoneFieldId = 'customer-phone-field';
@@ -197,7 +171,6 @@ export class CustomerSearchComponent {
   }
   @Output() customerChange = new EventEmitter<CustomerFormValue | null>();
 
-  linkExisting = signal(true);
   query = '';
   manualName = '';
   manualPhone = '';
@@ -208,18 +181,44 @@ export class CustomerSearchComponent {
   loading = signal(false);
   adding = signal(false);
   addError = signal('');
-  manualSaved = signal(false);
+
+  addDialogOpen = signal(false);
+  addDialogAnimOpen = signal(false);
+  private addDialogClosing = false;
 
   private searchDebounce?: ReturnType<typeof setTimeout>;
   private searchRequestId = 0;
 
   rankedResults = () => rankCustomers(this.allResults(), this.query);
 
-  setLinkExisting(linked: boolean) {
-    if (this.linkExisting() === linked) return;
-    this.linkExisting.set(linked);
-    this.resetState();
-    this.customerChange.emit(null);
+  openAddDialog() {
+    this.addDialogClosing = false;
+    this.manualName = '';
+    this.manualPhone = '';
+    this.addError.set('');
+    this.addDialogOpen.set(true);
+    this.addDialogAnimOpen.set(false);
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => this.addDialogAnimOpen.set(true), 16);
+  }
+
+  openAddDialogFromEmpty(event: Event) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.showDropdown.set(false);
+    this.dropdownOpen.set(false);
+    this.openAddDialog();
+  }
+
+  closeAddDialog() {
+    if (!this.addDialogOpen() || this.addDialogClosing) return;
+    this.addDialogClosing = true;
+    this.addDialogAnimOpen.set(false);
+    setTimeout(() => {
+      this.addDialogOpen.set(false);
+      this.addDialogClosing = false;
+      document.body.style.overflow = '';
+    }, transitionMs('--modal-close-dur', 300));
   }
 
   reopenSearch() {
@@ -291,18 +290,6 @@ export class CustomerSearchComponent {
     this.customerChange.emit(null);
   }
 
-  onManualChange() {
-    this.manualSaved.set(false);
-    this.addError.set('');
-    const name = this.manualName.trim();
-    const phone = this.manualPhone.trim();
-    if (!name && !phone) {
-      this.customerChange.emit(null);
-      return;
-    }
-    this.customerChange.emit({ linked: false, name, phone });
-  }
-
   createCustomer() {
     if (
       !validateRequiredFields(
@@ -324,20 +311,18 @@ export class CustomerSearchComponent {
     this.customerService.create({ name, phone }).subscribe({
       next: (c) => {
         this.adding.set(false);
-        this.manualSaved.set(true);
         this.snackbar.success('Customer added');
-        this.customerChange.emit({ linked: false, customerId: c._id, name: c.name, phone: c.phone });
+        this.closeAddDialog();
+        this.selectCustomer(c);
       },
       error: (err) => {
         this.adding.set(false);
         const existingId = err.error?.existingId;
         if (existingId) {
           this.customerService.getById(existingId).subscribe((c) => {
-            this.manualName = c.name;
-            this.manualPhone = c.phone;
-            this.manualSaved.set(true);
-            this.snackbar.warning('Customer with this name and phone already exists — linked existing record');
-            this.customerChange.emit({ linked: false, customerId: c._id, name: c.name, phone: c.phone });
+            this.snackbar.warning('Customer already exists — linked');
+            this.closeAddDialog();
+            this.selectCustomer(c);
           });
           return;
         }
@@ -355,6 +340,12 @@ export class CustomerSearchComponent {
     }, 150);
   }
 
+  initials(name: string): string {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+
   private emitLinked(c: Customer | null) {
     if (!c) {
       this.customerChange.emit(null);
@@ -368,21 +359,8 @@ export class CustomerSearchComponent {
     });
   }
 
-  private resetState() {
-    this.query = '';
-    this.manualName = '';
-    this.manualPhone = '';
-    this.allResults.set([]);
-    this.selectedCustomer.set(null);
-    this.showDropdown.set(false);
-    this.dropdownOpen.set(false);
-    this.addError.set('');
-    this.manualSaved.set(false);
-  }
-
   private applyInitialCustomer(value: CustomerFormValue) {
-    if (value.linked && value.customerId) {
-      this.linkExisting.set(true);
+    if (value.customerId) {
       this.selectedCustomer.set({
         _id: value.customerId,
         name: value.name,
@@ -392,15 +370,12 @@ export class CustomerSearchComponent {
       });
       this.query = value.name;
       this.showDropdown.set(false);
-      this.customerChange.emit(value);
-      return;
-    }
-
-    if (value.name || value.phone) {
-      this.linkExisting.set(false);
-      this.manualName = value.name;
-      this.manualPhone = value.phone;
-      this.customerChange.emit(value);
+      this.customerChange.emit({
+        linked: true,
+        customerId: value.customerId,
+        name: value.name,
+        phone: value.phone,
+      });
     }
   }
 }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize } from 'rxjs';
 import { ProductService, ComboService } from '../../core/services/domain.service';
+import { PageActionsService } from '../../core/services/page-actions.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { Product, ProductFormValue, Combo, ComboFormValue } from '../../shared/models';
 import { InrPipe } from '../../shared/pipes/format.pipes';
@@ -22,14 +23,6 @@ type ComboModalMode = 'create' | 'edit';
   imports: [CommonModule, FormsModule, InrPipe, IconComponent, TabsSlidingDirective, PageEnterDirective, InlineLoaderComponent, CardTiltDirective],
   template: `
     <div class="t-page-enter" tPageEnter>
-      <div class="flex items-center justify-between mb-5">
-        <h1 class="page-heading mb-0">Menu</h1>
-        <button type="button" class="btn-primary text-sm py-2 px-4 min-h-0 shrink-0" (click)="activeTab() === 'products' ? openCreate() : openCreateCombo()">
-          <app-icon name="add" size="sm" />
-          Add
-        </button>
-      </div>
-
       <div class="app-tabs mb-5" role="tablist" [tTabsActiveIndex]="activeTab() === 'products' ? 0 : 1">
         <span class="t-tabs-pill" aria-hidden="true"></span>
         <button type="button" class="t-tab text-sm" role="tab" [attr.aria-selected]="activeTab() === 'products'" (click)="activeTab.set('products')">
@@ -60,12 +53,12 @@ type ComboModalMode = 'create' | 'edit';
               <h2 class="section-heading mt-5 mb-2.5 first:mt-0">{{ groupLabel(group) }}</h2>
               <div class="space-y-2">
                 @for (p of getByGroup(group); track p._id) {
-                  <div class="t-tilt rounded-xl border border-border overflow-hidden bg-gradient-to-r from-white/[0.04] to-transparent transition-colors hover:border-border-medium hover:from-white/[0.07]">
+                  <div class="list-row t-tilt !p-0 overflow-hidden">
                     <div class="t-tilt-card flex items-center gap-3 px-4 py-3.5 w-full">
                       <div class="flex-1 min-w-0 relative z-[1]">
                         <p class="font-medium flex items-center gap-1.5 truncate">
                           @if (p.mustTry) {
-                            <app-icon name="star" size="sm" class="text-amber-400 shrink-0" />
+                            <app-icon name="star" size="sm" class="text-status-warning shrink-0" />
                           }
                           {{ p.name }}
                         </p>
@@ -73,20 +66,20 @@ type ComboModalMode = 'create' | 'edit';
                           <p class="text-text-muted text-sm mt-0.5 truncate">{{ p.description }}</p>
                         }
                       </div>
-                      <p class="font-semibold tabular-nums shrink-0 relative z-[1]">{{ p.price | inr }}</p>
+                      <p class="font-semibold tabular-nums shrink-0 relative z-[1] text-accent">{{ p.price | inr }}</p>
                       <div class="flex items-center gap-0.5 shrink-0 relative z-[1]">
-                        <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors" (click)="openEdit(p); $event.stopPropagation()" [attr.aria-label]="'Edit ' + p.name">
+                        <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors" (click)="openEdit(p); $event.stopPropagation()" [attr.aria-label]="'Edit ' + p.name">
                           <app-icon name="edit" size="sm" />
                         </button>
                         @if (confirmDeleteId() === p._id) {
-                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-status-danger hover:bg-status-danger/10 transition-colors" (click)="cancelDelete(); $event.stopPropagation()" aria-label="Cancel delete">
+                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-status-danger hover:bg-[rgba(215,0,21,0.08)] transition-colors" (click)="cancelDelete(); $event.stopPropagation()" aria-label="Cancel delete">
                             <app-icon name="close" size="sm" />
                           </button>
-                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-status-danger hover:bg-status-danger/10 transition-colors" (click)="deleteProduct(p); $event.stopPropagation()" aria-label="Confirm delete">
+                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-status-danger hover:bg-[rgba(215,0,21,0.08)] transition-colors" (click)="deleteProduct(p); $event.stopPropagation()" aria-label="Confirm delete">
                             <app-icon name="check" size="sm" />
                           </button>
                         } @else {
-                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-status-danger hover:bg-white/[0.08] transition-colors" (click)="askDelete(p._id); $event.stopPropagation()" [attr.aria-label]="'Delete ' + p.name">
+                          <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-status-danger hover:bg-bg-elevated transition-colors" (click)="askDelete(p._id); $event.stopPropagation()" [attr.aria-label]="'Delete ' + p.name">
                             <app-icon name="delete" size="sm" />
                           </button>
                         }
@@ -115,11 +108,11 @@ type ComboModalMode = 'create' | 'edit';
           } @else {
             <div class="space-y-2">
               @for (c of combos(); track c._id) {
-                <div class="flex items-center gap-3 rounded-xl border border-border bg-gradient-to-r from-white/[0.04] to-transparent px-4 py-3.5 transition-colors hover:border-border-medium hover:from-white/[0.07]">
+                <div class="store-utility-card flex items-center gap-3 !py-3.5 !px-4">
                   <div class="flex-1 min-w-0">
                     <p class="font-medium truncate flex items-center gap-1.5">
                       @if (isMustTryCombo(c)) {
-                        <app-icon name="star" size="sm" class="text-amber-400 shrink-0" />
+                        <app-icon name="star" size="sm" class="text-status-warning shrink-0" />
                       }
                       {{ c.name }}
                     </p>
@@ -128,20 +121,20 @@ type ComboModalMode = 'create' | 'edit';
                     }
                     <p class="text-text-muted text-xs mt-1 truncate">{{ comboItemsLabel(c) }}</p>
                   </div>
-                  <p class="font-semibold tabular-nums shrink-0">{{ c.price | inr }}</p>
+                  <p class="font-semibold tabular-nums shrink-0 text-accent">{{ c.price | inr }}</p>
                   <div class="flex items-center gap-0.5 shrink-0">
-                    <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors" (click)="openEditCombo(c)" [attr.aria-label]="'Edit ' + c.name">
+                    <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors" (click)="openEditCombo(c)" [attr.aria-label]="'Edit ' + c.name">
                       <app-icon name="edit" size="sm" />
                     </button>
                     @if (confirmDeleteComboId() === c._id) {
-                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-status-danger hover:bg-status-danger/10 transition-colors" (click)="cancelDeleteCombo()" aria-label="Cancel delete">
+                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-status-danger hover:bg-[rgba(215,0,21,0.08)] transition-colors" (click)="cancelDeleteCombo()" aria-label="Cancel delete">
                         <app-icon name="close" size="sm" />
                       </button>
-                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-status-danger hover:bg-status-danger/10 transition-colors" (click)="deleteCombo(c)" aria-label="Confirm delete">
+                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-status-danger hover:bg-[rgba(215,0,21,0.08)] transition-colors" (click)="deleteCombo(c)" aria-label="Confirm delete">
                         <app-icon name="check" size="sm" />
                       </button>
                     } @else {
-                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-status-danger hover:bg-white/[0.08] transition-colors" (click)="askDeleteCombo(c._id)" [attr.aria-label]="'Delete ' + c.name">
+                      <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-status-danger hover:bg-bg-elevated transition-colors" (click)="askDeleteCombo(c._id)" [attr.aria-label]="'Delete ' + c.name">
                         <app-icon name="delete" size="sm" />
                       </button>
                     }
@@ -157,41 +150,36 @@ type ComboModalMode = 'create' | 'edit';
     @if (modalOpen()) {
       <div class="fixed inset-0 z-[200]" role="presentation">
         <div
-          class="absolute inset-0 bg-black/75 backdrop-blur-[6px] transition-opacity duration-300 ease-out"
+          class="bottom-sheet-backdrop"
           [class.opacity-100]="modalAnimOpen()"
           [class.opacity-0]="!modalAnimOpen()"
           [class.pointer-events-none]="!modalAnimOpen()"
           (click)="closeModal()"
         ></div>
         <div
-          class="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-[#1a1a1a] border border-border-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          [class.translate-y-0]="modalAnimOpen()"
-          [class.opacity-100]="modalAnimOpen()"
-          [class.translate-y-full]="!modalAnimOpen()"
-          [class.opacity-0]="!modalAnimOpen()"
+          class="bottom-sheet t-panel"
+          [class.is-open]="modalAnimOpen()"
           [class.pointer-events-none]="!modalAnimOpen()"
-          style="box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);"
           role="dialog"
           aria-modal="true"
           [attr.aria-labelledby]="'product-sheet-title'"
           (click)="$event.stopPropagation()"
         >
-          <div class="sticky top-0 z-10 pt-3 pb-2 bg-gradient-to-b from-[#1a1a1a] 85% to-transparent">
-            <div class="mx-auto h-1 w-11 rounded-full bg-white/30"></div>
+          <div class="bottom-sheet-grab" aria-hidden="true">
+            <div class="bottom-sheet-handle"></div>
           </div>
 
-          <div class="relative px-5 pt-1 pb-4 border-b border-border-subtle overflow-hidden">
-            <div class="absolute -top-10 -right-8 w-36 h-36 rounded-full blur-3xl pointer-events-none bg-accent/10"></div>
-            <div class="flex items-start justify-between gap-3 relative">
-              <div class="min-w-0">
-                <p id="product-sheet-title" class="text-2xl font-semibold tracking-tight leading-tight">
+          <div class="bottom-sheet-header">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p id="product-sheet-title" class="text-xl font-semibold tracking-tight leading-tight">
                   {{ modalMode() === 'create' ? 'New product' : 'Edit product' }}
                 </p>
                 <p class="text-text-muted text-sm mt-1">
                   {{ modalMode() === 'create' ? 'Add to your menu' : editingProduct()?.name }}
                 </p>
               </div>
-              <button type="button" class="flex items-center justify-center w-9 h-9 rounded-full text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors shrink-0" (click)="closeModal()" aria-label="Close">
+              <button type="button" class="bottom-sheet-close" (click)="closeModal()" aria-label="Close">
                 <app-icon name="close" size="sm" />
               </button>
             </div>
@@ -220,20 +208,21 @@ type ComboModalMode = 'create' | 'edit';
                 </div>
               </div>
               <div>
-                <label class="label" for="product-desc">Description <span class="normal-case tracking-normal font-normal text-text-muted">(optional)</span></label>
+                <label class="label" for="product-desc">Description</label>
                 <input id="product-desc" class="input" [(ngModel)]="form.description" name="description" placeholder="Fried momo only" autocomplete="off" />
               </div>
             </section>
 
             <section class="px-5 py-4 border-b border-border-subtle">
               <p class="section-heading mb-3">Options</p>
-              <label class="flex items-center gap-3 rounded-xl border border-border bg-white/[0.04] px-4 py-3.5 cursor-pointer transition-colors hover:bg-white/[0.06]">
+              <label class="option-tile cursor-pointer" [class.option-tile-selected]="form.mustTry">
                 <input type="checkbox" class="sr-only" [(ngModel)]="form.mustTry" name="mustTry" />
                 <span
-                  class="flex items-center justify-center w-5 h-5 rounded-md border shrink-0 transition-colors"
-                  [ngClass]="form.mustTry ? 'bg-amber-400/20 border-amber-400/60 text-amber-400' : 'border-border-medium'"
+                  class="option-tile-icon"
+                  [class.!bg-[rgba(191,72,0,0.1)]]="form.mustTry"
+                  [class.!text-status-warning]="form.mustTry"
                 >
-                  @if (form.mustTry) { <app-icon name="star" size="sm" /> }
+                  @if (form.mustTry) { <app-icon name="star" size="sm" /> } @else { <app-icon name="star" size="sm" class="opacity-40" /> }
                 </span>
                 <span class="text-sm min-w-0">
                   <span class="font-medium block">Must try</span>
@@ -242,7 +231,7 @@ type ComboModalMode = 'create' | 'edit';
               </label>
             </section>
 
-            <div class="sticky bottom-0 flex gap-2 p-5 bg-[#1a1a1a] border-t border-border-subtle">
+            <div class="sticky bottom-0 flex gap-2 p-5 bg-bg-primary border-t border-border-subtle">
               <button type="button" class="btn-secondary flex-1 min-h-0 py-3 text-xs" (click)="closeModal()">Cancel</button>
               <button type="submit" class="btn-primary flex-1 min-h-0 py-3 text-xs" [disabled]="saving()">
                 {{ saving() ? 'Saving…' : modalMode() === 'create' ? 'Add product' : 'Save changes' }}
@@ -257,33 +246,28 @@ type ComboModalMode = 'create' | 'edit';
     @if (comboModalOpen()) {
       <div class="fixed inset-0 z-[200]" role="presentation">
         <div
-          class="absolute inset-0 bg-black/75 backdrop-blur-[6px] transition-opacity duration-300 ease-out"
+          class="bottom-sheet-backdrop"
           [class.opacity-100]="comboModalAnimOpen()"
           [class.opacity-0]="!comboModalAnimOpen()"
           [class.pointer-events-none]="!comboModalAnimOpen()"
           (click)="closeComboModal()"
         ></div>
         <div
-          class="absolute bottom-0 left-0 right-0 mx-auto w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-[1.25rem] bg-[#1a1a1a] border border-border-medium transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-          [class.translate-y-0]="comboModalAnimOpen()"
-          [class.opacity-100]="comboModalAnimOpen()"
-          [class.translate-y-full]="!comboModalAnimOpen()"
-          [class.opacity-0]="!comboModalAnimOpen()"
+          class="bottom-sheet t-panel"
+          [class.is-open]="comboModalAnimOpen()"
           [class.pointer-events-none]="!comboModalAnimOpen()"
-          style="box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.5);"
           role="dialog"
           aria-modal="true"
           [attr.aria-labelledby]="'combo-sheet-title'"
           (click)="$event.stopPropagation()"
         >
           <form (ngSubmit)="saveCombo()">
-            <div class="sticky top-0 z-10 pt-3 pb-2 bg-gradient-to-b from-[#1a1a1a] 85% to-transparent">
-              <div class="mx-auto h-1 w-11 rounded-full bg-white/30"></div>
+            <div class="bottom-sheet-grab" aria-hidden="true">
+              <div class="bottom-sheet-handle"></div>
             </div>
 
-            <div class="relative px-5 pt-1 pb-5 border-b border-border-subtle overflow-hidden">
-              <div class="absolute -top-12 -right-10 w-40 h-40 rounded-full blur-3xl pointer-events-none bg-emerald-500/10"></div>
-              <div class="flex items-start justify-between gap-3 relative">
+            <div class="bottom-sheet-header">
+              <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
                   <div class="flex items-baseline gap-0.5">
                     <span class="text-[2.5rem] font-semibold tracking-tight leading-none text-text-muted">₹</span>
@@ -292,7 +276,7 @@ type ComboModalMode = 'create' | 'edit';
                       type="number"
                       min="0"
                       step="1"
-                      class="text-[2.5rem] font-semibold tracking-tight leading-none tabular-nums bg-transparent border-0 outline-none w-full max-w-[10rem] p-0 focus:ring-0 placeholder:text-text-muted/40"
+                      class="text-[2.5rem] font-semibold tracking-tight leading-none tabular-nums text-accent bg-transparent border-0 outline-none w-full max-w-[10rem] p-0 focus:ring-0 placeholder:text-text-muted"
                       [(ngModel)]="comboForm.price"
                       name="comboPrice"
                       placeholder="0"
@@ -309,32 +293,32 @@ type ComboModalMode = 'create' | 'edit';
                   />
                   <input
                     id="combo-desc"
-                    class="text-text-muted text-xs mt-1 bg-transparent border-0 outline-none w-full p-0 placeholder:text-text-muted/50 focus:ring-0"
+                    class="text-text-muted text-xs mt-1 bg-transparent border-0 outline-none w-full p-0 placeholder:text-text-muted focus:ring-0"
                     [(ngModel)]="comboForm.description"
                     name="comboDesc"
-                    placeholder="Optional description"
+                    placeholder="Description"
                     autocomplete="off"
                   />
                   <p id="combo-sheet-title" class="sr-only">{{ comboModalMode() === 'create' ? 'New combo' : 'Edit combo' }}</p>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-2 shrink-0 pt-1">
                   <button
                     type="button"
-                    class="flex items-center justify-center w-9 h-9 rounded-full transition-colors"
-                    [ngClass]="comboForm.mustTry ? 'bg-amber-400/15 text-amber-400 ring-1 ring-amber-400/30' : 'text-text-muted hover:text-text-primary hover:bg-white/[0.08]'"
+                    class="flex items-center justify-center w-8 h-8 rounded-full transition-colors"
+                    [ngClass]="comboForm.mustTry ? 'bg-status-warning/10 text-status-warning ring-1 ring-status-warning/25' : 'bottom-sheet-close'"
                     (click)="comboForm.mustTry = !comboForm.mustTry"
                     [attr.aria-label]="comboForm.mustTry ? 'Remove must try' : 'Mark as must try'"
                     [attr.aria-pressed]="comboForm.mustTry"
                   >
                     <app-icon name="star" size="sm" />
                   </button>
-                  <button type="button" class="flex items-center justify-center w-9 h-9 rounded-full text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors" (click)="closeComboModal()" aria-label="Close">
+                  <button type="button" class="bottom-sheet-close" (click)="closeComboModal()" aria-label="Close">
                     <app-icon name="close" size="sm" />
                   </button>
                 </div>
               </div>
               @if (comboForm.mustTry) {
-                <span class="inline-flex items-center gap-1 mt-3 px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-400 text-[10px] font-semibold uppercase tracking-caption border border-amber-400/25">
+                <span class="badge-warning text-[10px] mt-3">
                   <app-icon name="star" size="sm" class="!text-[11px]" />
                   Must try
                 </span>
@@ -348,7 +332,7 @@ type ComboModalMode = 'create' | 'edit';
               </div>
               @for (row of comboForm.items; track $index) {
                 <div class="flex items-center gap-3 py-3.5 border-b border-border-subtle last:border-b-0">
-                  <div class="flex items-center justify-center w-10 h-10 rounded-xl shrink-0 bg-white/[0.06] text-text-secondary ring-1 ring-white/8">
+                  <div class="list-row-icon !w-10 !h-10 !rounded-md">
                     <app-icon name="restaurant" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
@@ -369,19 +353,19 @@ type ComboModalMode = 'create' | 'edit';
                     }
                   </div>
                   <div class="flex items-center gap-0.5 shrink-0">
-                    <button type="button" class="flex items-center justify-center w-7 h-7 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors" (click)="adjustComboQty($index, -1)" aria-label="Decrease quantity">
+                    <button type="button" class="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors" (click)="adjustComboQty($index, -1)" aria-label="Decrease quantity">
                       <app-icon name="remove" size="sm" />
                     </button>
                     <span class="w-6 text-center text-sm font-medium tabular-nums">{{ row.quantity }}</span>
-                    <button type="button" class="flex items-center justify-center w-7 h-7 rounded-lg text-text-muted hover:text-text-primary hover:bg-white/[0.08] transition-colors" (click)="adjustComboQty($index, 1)" aria-label="Increase quantity">
+                    <button type="button" class="flex items-center justify-center w-7 h-7 rounded-md text-text-muted hover:text-text-primary hover:bg-bg-elevated transition-colors" (click)="adjustComboQty($index, 1)" aria-label="Increase quantity">
                       <app-icon name="add" size="sm" />
                     </button>
                   </div>
                   @if (productById(row.productId)) {
-                    <p class="font-semibold shrink-0 tabular-nums text-sm w-14 text-right">{{ comboLineTotal(row) | inr }}</p>
+                    <p class="font-semibold shrink-0 tabular-nums text-sm w-14 text-right text-accent">{{ comboLineTotal(row) | inr }}</p>
                   }
                   @if (comboForm.items.length > 1) {
-                    <button type="button" class="flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors shrink-0" (click)="removeComboItemRow($index)" aria-label="Remove item">
+                    <button type="button" class="flex items-center justify-center w-8 h-8 rounded-md text-text-muted hover:text-status-danger hover:bg-[rgba(215,0,21,0.08)] transition-colors shrink-0" (click)="removeComboItemRow($index)" aria-label="Remove item">
                       <app-icon name="close" size="sm" />
                     </button>
                   }
@@ -398,14 +382,14 @@ type ComboModalMode = 'create' | 'edit';
                   <span class="tabular-nums">{{ comboItemsSubtotal() | inr }}</span>
                 </div>
                 @if (comboSavings() > 0) {
-                  <div class="flex justify-between text-emerald-400">
+                  <div class="flex justify-between text-status-active">
                     <span>Customer saves</span>
                     <span class="tabular-nums">−{{ comboSavings() | inr }}</span>
                   </div>
                 }
                 <div class="flex items-center justify-between pt-3 mt-2 border-t border-dashed border-border-medium">
                   <span class="font-medium">Combo price</span>
-                  <span class="text-xl font-semibold tabular-nums">
+                  <span class="text-xl font-semibold tabular-nums text-accent">
                     @if (comboForm.price != null && comboForm.price >= 0) {
                       {{ comboForm.price | inr }}
                     } @else {
@@ -416,7 +400,7 @@ type ComboModalMode = 'create' | 'edit';
               </div>
             </section>
 
-            <div class="sticky bottom-0 flex gap-2 p-5 bg-[#1a1a1a] border-t border-border-subtle">
+            <div class="sticky bottom-0 flex gap-2 p-5 bg-bg-primary border-t border-border-subtle">
               <button type="button" class="btn-secondary flex-1 min-h-0 py-3 text-xs" (click)="closeComboModal()">Cancel</button>
               <button type="submit" class="btn-primary flex-1 min-h-0 py-3 text-xs" [disabled]="comboSaving()">
                 {{ comboSaving() ? 'Saving…' : comboModalMode() === 'create' ? 'Add combo' : 'Save changes' }}
@@ -433,6 +417,7 @@ export class ProductsListComponent implements OnInit {
   private productService = inject(ProductService);
   private comboService = inject(ComboService);
   private snackbar = inject(SnackbarService);
+  private pageActionsService = inject(PageActionsService);
 
   activeTab = signal<PageTab>('products');
   loading = signal(true);
@@ -470,7 +455,19 @@ export class ProductsListComponent implements OnInit {
 
   readonly groupLabel = groupLabel;
 
+  onHeaderAdd() {
+    if (this.activeTab() === 'products') {
+      this.openCreate();
+    } else {
+      this.openCreateCombo();
+    }
+  }
+
   ngOnInit() {
+    this.pageActionsService.set(
+      [{ kind: 'button', label: 'Add', icon: 'add', id: 'add', primary: true }],
+      { add: () => this.onHeaderAdd() },
+    );
     let pending = 2;
     const done = () => {
       pending -= 1;

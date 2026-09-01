@@ -13,7 +13,6 @@ import { optionLabel, resourceLabel } from '../../shared/utils/session-display';
   standalone: true,
   imports: [CommonModule, TabsSlidingDirective],
   template: `
-    <h1 class="page-heading">Gaming Options</h1>
     <div class="space-y-2">
       @for (opt of options(); track opt._id) {
         <div class="card flex items-center justify-between gap-3">
@@ -83,7 +82,6 @@ export class GamingOptionsListComponent implements OnInit {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <h1 class="page-heading">Resources</h1>
     <div class="space-y-2">
       @for (res of resources(); track res._id) {
         <div class="card">
@@ -116,15 +114,10 @@ export class GamingResourcesListComponent implements OnInit {
   imports: [CommonModule, RouterModule, IconComponent, NumberPopInComponent],
   template: `
     <div class="gaming-hub-hero">
-      <div>
-        <h1 class="page-heading mb-1">Gaming</h1>
-        <p class="text-sm text-text-muted">Sessions, setups & pricing</p>
-      </div>
-
       @if (summary(); as s) {
         <div class="grid grid-cols-2 gap-2.5 mt-4">
-          <div class="stat-card !p-3 !bg-white/[0.03]">
-            <p class="text-text-muted text-[10px] uppercase tracking-caption">Active now</p>
+          <div class="stat-card">
+            <p class="text-caption text-text-muted">Active now</p>
             <p
               class="text-xl font-semibold"
               [class.text-status-active]="s.today.activeSessions > 0"
@@ -134,8 +127,8 @@ export class GamingResourcesListComponent implements OnInit {
             </p>
             <p class="text-text-muted text-[11px]">{{ s.today.sessions }} sessions today</p>
           </div>
-          <div class="stat-card !p-3 !bg-white/[0.03]">
-            <p class="text-text-muted text-[10px] uppercase tracking-caption">Stations free</p>
+          <div class="stat-card">
+            <p class="text-caption text-text-muted">Stations free</p>
             <p
               class="text-xl font-semibold"
               [class.text-status-active]="s.occupancy.free > 0"

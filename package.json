@@ -5,7 +5,7 @@
   "description": "CloudX Gaming Center Management System",
   "scripts": {
     "dev:server": "cd server && npm run dev",
-    "dev:client": "cd client && npm start",
+    "dev:client": "node scripts/print-mobile-url.js && cd client && npm start",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
     "seed": "cd server && npm run seed",

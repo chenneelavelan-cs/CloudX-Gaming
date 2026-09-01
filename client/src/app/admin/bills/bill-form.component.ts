@@ -7,7 +7,6 @@ import { BillService, GamingService, ProductService, ComboService } from '../../
 import { BillItem, Product, CustomerFormValue, GamingOption, PricingResult, Combo } from '../../shared/models';
 import { InrPipe, DurationPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { CustomerSearchComponent } from '../../shared/components/customer-search.component';
 import { applyDefaultGamingOption } from '../../shared/utils/gaming-defaults';
 import { getDurationOptions } from '../../shared/utils/duration-options';
@@ -23,7 +22,7 @@ type AddPanel = 'gaming' | 'menu' | 'custom';
 @Component({
   selector: 'app-bill-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, PageHeaderComponent, CustomerSearchComponent, TabsSlidingDirective, NumberPopInComponent, PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, LoadingStateComponent],
+  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, CustomerSearchComponent, TabsSlidingDirective, NumberPopInComponent, PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, LoadingStateComponent],
   styles: [
     `
       .add-tab {
@@ -43,36 +42,60 @@ type AddPanel = 'gaming' | 'menu' | 'custom';
         @apply w-[5.25rem] text-right font-medium text-accent bg-white/[0.04] border border-accent/50 rounded-lg px-2.5 py-1.5 text-sm focus:border-accent focus:outline-none;
       }
       .bill-item {
-        @apply card flex items-center gap-3 p-3 rounded-xl;
+        @apply relative flex gap-3 p-3.5 rounded-xl border border-border bg-white/[0.03];
       }
       .bill-item-icon {
-        @apply flex items-center justify-center w-11 h-11 rounded-lg bg-white/[0.04] shrink-0 text-text-secondary;
+        @apply flex items-center justify-center w-10 h-10 rounded-lg shrink-0;
       }
-      .bill-item-type {
-        @apply text-[10px] font-semibold uppercase tracking-caption text-text-muted px-1.5 py-0.5 rounded bg-white/[0.05];
+      .bill-item-icon-gaming {
+        @apply bg-accent/15 text-accent;
+      }
+      .bill-item-icon-menu {
+        @apply bg-white/[0.06] text-text-secondary;
+      }
+      .bill-item-icon-combo {
+        @apply bg-status-info/15 text-status-info;
+      }
+      .bill-item-icon-custom {
+        @apply bg-white/[0.06] text-text-muted;
+      }
+      .bill-item-body {
+        @apply flex-1 min-w-0 pr-7;
+      }
+      .bill-item-header {
+        @apply flex items-start justify-between gap-3;
+      }
+      .bill-item-name {
+        @apply font-semibold text-sm leading-snug;
+      }
+      .bill-item-amount {
+        @apply text-base font-bold tabular-nums text-accent shrink-0 leading-none pt-0.5 hover:opacity-80 transition-opacity;
+      }
+      .bill-item-price-input {
+        @apply w-[4.5rem] text-right text-sm font-bold tabular-nums text-accent bg-white/[0.04] border border-accent/40 rounded-lg px-2 py-1 focus:outline-none focus:border-accent shrink-0;
+      }
+      .bill-item-footer {
+        @apply flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1.5 text-xs text-text-muted leading-relaxed;
+      }
+      .bill-item-kind {
+        @apply text-[10px] font-semibold uppercase tracking-caption text-text-secondary;
+      }
+      .bill-item-detail {
+        @apply text-text-muted;
+      }
+      .bill-item-sep {
+        @apply select-none opacity-40 text-text-muted;
       }
       .bill-item-adjusted {
-        @apply text-[10px] font-medium text-amber-400/90 px-1.5 py-0.5 rounded bg-amber-400/10;
-      }
-      .bill-item-price {
-        @apply inline-flex items-center gap-1 rounded-lg border border-border-subtle bg-white/[0.03] px-2.5 py-1.5 text-sm font-medium text-accent transition-colors hover:border-accent/35 hover:bg-accent/[0.06];
-      }
-      .bill-item-price-icon {
-        @apply text-[15px] text-text-muted/70 leading-none;
+        @apply text-[10px] font-medium text-amber-400/90;
       }
       .bill-item-remove {
-        @apply flex items-center justify-center w-8 h-8 rounded-lg text-text-muted/70 hover:text-status-danger hover:bg-white/[0.05] transition-colors shrink-0;
+        @apply absolute top-2 right-2 flex items-center justify-center w-7 h-7 rounded-lg text-text-muted hover:text-status-danger hover:bg-status-danger/10 transition-colors;
       }
     `,
   ],
   template: `
     <div class="form-page t-page-enter" tPageEnter>
-      <app-page-header
-        title="New Bill"
-        subtitle="Add items and collect payment"
-        [backLink]="backLink()"
-      />
-
       <!-- Customer -->
       <section class="form-card mb-4">
         <app-customer-search [initialCustomer]="draftCustomer()" (customerChange)="onCustomerChange($event)" />
@@ -91,50 +114,53 @@ type AddPanel = 'gaming' | 'menu' | 'custom';
         <div id="bill-items-section" class="space-y-2 mb-4 t-list-stagger is-shown">
         @for (item of items(); track $index) {
           <div class="bill-item t-list-item" [style.--i]="$index">
-            <div class="bill-item-icon">
+            <div class="bill-item-icon" [ngClass]="itemIconClass(item)">
               <app-icon [name]="itemIcon(item)" size="sm" />
             </div>
 
-            <div class="flex-1 min-w-0 pr-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <p class="font-medium truncate">{{ item.name }}</p>
-                <span class="bill-item-type">{{ itemTypeLabel(item.type) }}</span>
+            <div class="bill-item-body">
+              <div class="bill-item-header">
+                <p class="bill-item-name">{{ item.name }}</p>
+                @if (editingPriceIndex() === $index) {
+                  <input
+                    type="number"
+                    class="bill-item-price-input"
+                    [ngModel]="item.total"
+                    (ngModelChange)="updateItemPrice($index, $event)"
+                    (blur)="stopPriceEdit()"
+                    (keydown.enter)="stopPriceEdit()"
+                    autofocus
+                    min="0"
+                    step="1"
+                    aria-label="Item price"
+                  />
+                } @else {
+                  <button type="button" class="bill-item-amount" (click)="startPriceEdit($index)" aria-label="Edit price">
+                    {{ item.total | inr }}
+                  </button>
+                }
+              </div>
+
+              <div class="bill-item-footer">
+                <span class="bill-item-kind">{{ itemTypeLabel(item.type) }}</span>
+                @if (item.description) {
+                  <span class="bill-item-sep">·</span>
+                  <span class="bill-item-detail">{{ item.description }}</span>
+                }
+                @if (item.quantity > 1) {
+                  <span class="bill-item-sep">·</span>
+                  <span class="bill-item-detail">{{ item.quantity }} × {{ item.unitPrice | inr }}</span>
+                }
                 @if (item.isPriceOverridden) {
+                  <span class="bill-item-sep">·</span>
                   <span class="bill-item-adjusted">Adjusted</span>
                 }
               </div>
-              @if (item.description) {
-                <p class="text-text-muted text-xs mt-1 truncate">{{ item.description }}</p>
-              }
-              @if (item.quantity > 1) {
-                <p class="text-text-secondary text-xs mt-0.5">{{ item.quantity }} × {{ item.unitPrice | inr }}</p>
-              }
             </div>
 
-            <div class="flex items-center gap-1 shrink-0">
-              @if (editingPriceIndex() === $index) {
-                <input
-                  type="number"
-                  class="price-input"
-                  [ngModel]="item.total"
-                  (ngModelChange)="updateItemPrice($index, $event)"
-                  (blur)="stopPriceEdit()"
-                  (keydown.enter)="stopPriceEdit()"
-                  autofocus
-                  min="0"
-                  step="1"
-                  aria-label="Item price"
-                />
-              } @else {
-                <button type="button" class="bill-item-price" (click)="startPriceEdit($index)" aria-label="Edit price">
-                  <span>{{ item.total | inr }}</span>
-                  <app-icon name="edit" size="sm" class="bill-item-price-icon" />
-                </button>
-              }
-              <button type="button" (click)="removeItem($index)" class="bill-item-remove" aria-label="Remove">
-                <app-icon name="close" size="sm" />
-              </button>
-            </div>
+            <button type="button" (click)="removeItem($index)" class="bill-item-remove" aria-label="Remove">
+              <app-icon name="close" size="sm" />
+            </button>
           </div>
         }
       </div>
@@ -385,7 +411,7 @@ type AddPanel = 'gaming' | 'menu' | 'custom';
 
       @if (manualDiscount > 0) {
         <div>
-          <label class="label text-status-active/70" for="discount-reason">Reason <span class="normal-case tracking-normal font-normal text-text-muted">(optional)</span></label>
+          <label class="label text-status-active/70" for="discount-reason">Reason</label>
           <input
             id="discount-reason"
             class="input py-2.5 text-sm bg-black/15 border-status-active/10 focus:border-status-active/30"
@@ -789,6 +815,16 @@ export class BillFormComponent implements OnInit {
     if (item.type === 'combo') return 'inventory_2';
     if (item.type === 'custom') return 'edit';
     return 'local_cafe';
+  }
+
+  itemIconClass(item: BillItem): string {
+    const map: Record<BillItem['type'], string> = {
+      gaming: 'bill-item-icon-gaming',
+      product: 'bill-item-icon-menu',
+      combo: 'bill-item-icon-combo',
+      custom: 'bill-item-icon-custom',
+    };
+    return map[item.type];
   }
 
   itemTypeLabel(type: BillItem['type']): string {

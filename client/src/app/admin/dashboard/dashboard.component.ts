@@ -61,7 +61,7 @@ import { optionLabel, resourceLabel, bookingTitle as formatBookingTitle } from '
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <a
           routerLink="/admin/reports"
-          class="stat-card t-tilt no-underline hover:bg-white/[0.04] transition-colors"
+          class="stat-card t-tilt no-underline hover:border-accent/35 transition-colors"
         >
           <div class="t-tilt-card">
             <p class="text-text-muted text-[10px] uppercase tracking-caption">Today revenue</p>
@@ -250,61 +250,6 @@ import { optionLabel, resourceLabel, bookingTitle as formatBookingTitle } from '
     }
     </div>
   `,
-  styles: [
-    `
-      .quick-actions-bar {
-        @apply mb-5;
-      }
-
-      .quick-actions {
-        @apply grid grid-cols-3 gap-2.5;
-      }
-
-      .quick-action {
-        @apply flex flex-col items-center justify-center gap-2 rounded-xl border border-border bg-white/[0.03] py-3.5 px-2 min-h-[76px] no-underline transition-all duration-200 hover:bg-white/[0.06] hover:border-border-medium active:scale-[0.98] overflow-visible;
-      }
-
-      .quick-action-featured {
-        @apply border-accent/30 bg-accent/[0.06] hover:bg-accent/10 hover:border-accent/40;
-      }
-
-      .quick-action-icon-wrap {
-        @apply relative overflow-visible pb-1 pr-1;
-      }
-
-      .quick-action-icon-wrap .t-tilt-card {
-        @apply relative overflow-hidden;
-      }
-
-      .quick-action-icon {
-        @apply flex items-center justify-center w-9 h-9 rounded-full;
-      }
-
-      .quick-action-plus {
-        @apply absolute -bottom-0.5 -right-0.5 z-10 flex items-center justify-center w-[18px] h-[18px] rounded-full bg-bg-primary border border-border-medium text-[11px] font-bold text-text-secondary leading-none;
-      }
-
-      .quick-action-plus-featured {
-        @apply border-accent/40 bg-accent/15 text-accent;
-      }
-
-      .quick-action-icon-booking {
-        @apply bg-status-info/15 text-status-info;
-      }
-
-      .quick-action-icon-gaming {
-        @apply bg-accent/20 text-accent;
-      }
-
-      .quick-action-icon-bill {
-        @apply bg-status-active/15 text-status-active;
-      }
-
-      .quick-action-label {
-        @apply text-[11px] font-semibold text-text-primary tracking-wide;
-      }
-    `,
-  ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   private gamingService = inject(GamingService);

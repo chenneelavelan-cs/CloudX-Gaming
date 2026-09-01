@@ -56,8 +56,8 @@ app.use(errorHandler);
 
 async function start() {
   await connectDatabase();
-  app.listen(config.port, () => {
-    console.log(`CloudX Gaming API running on http://localhost:${config.port}`);
+  app.listen(config.port, '0.0.0.0', () => {
+    console.log(`CloudX Gaming API running on http://0.0.0.0:${config.port}`);
   });
 }
 

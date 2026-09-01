@@ -4,8 +4,9 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        canvas: '#222222',
         bg: {
-          primary: '#181818',
+          primary: 'var(--skin-bg, #181818)',
           surface: '#181818',
           elevated: '#303030',
         },
@@ -15,16 +16,12 @@ module.exports = {
           muted: '#9d2211',
         },
         text: {
-          primary: '#ffffff',
-          secondary: '#969696',
-          muted: '#666666',
-        },
-        hairline: {
-          DEFAULT: '#303030',
-          light: '#d2d2d2',
+          primary: 'var(--skin-text, #ffffff)',
+          secondary: 'var(--skin-text-secondary, #969696)',
+          muted: 'var(--skin-text-muted, #666666)',
         },
         border: {
-          DEFAULT: 'rgba(255, 255, 255, 0.08)',
+          DEFAULT: 'var(--skin-border, rgba(255, 255, 255, 0.08))',
           subtle: 'rgba(255, 255, 255, 0.06)',
           medium: 'rgba(255, 255, 255, 0.12)',
         },
@@ -49,7 +46,12 @@ module.exports = {
         md: '8px',
         lg: '10px',
         xl: '12px',
+        pill: '9999px',
         full: '9999px',
+      },
+      maxWidth: {
+        content: '980px',
+        grid: '1440px',
       },
     },
   },

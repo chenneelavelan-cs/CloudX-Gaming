@@ -13,8 +13,6 @@ type ReportPreset = 'month' | '7d' | 'lifetime';
   standalone: true,
   imports: [CommonModule, InrPipe, DurationPipe, IconComponent, LoadingStateComponent, TabsSlidingDirective, NumberPopInComponent],
   template: `
-    <h1 class="page-heading mb-3">Reports</h1>
-
     <div
       class="t-tabs mb-6 app-tabs"
       role="tablist"
@@ -95,7 +93,7 @@ type ReportPreset = 'month' | '7d' | 'lifetime';
                 <div class="flex-1 flex flex-col justify-end items-center h-full min-w-0">
                   <div
                     class="w-full rounded-t min-h-[3px] transition-all"
-                    [ngClass]="day.revenue > 0 ? 'bg-accent' : 'bg-white/10'"
+                    [ngClass]="day.revenue > 0 ? 'bg-accent' : 'bg-border-subtle'"
                     [style.height]="barHeight(day.revenue)"
                     [attr.title]="barTitle(day.date, day.revenue)"
                   ></div>
@@ -161,7 +159,7 @@ type ReportPreset = 'month' | '7d' | 'lifetime';
                   <span class="text-sm font-medium">{{ opt.name }}</span>
                   <span class="text-text-secondary text-xs">{{ opt.count }} · {{ opt.hours }}h</span>
                 </div>
-                <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div class="h-1.5 rounded-full bg-border-subtle overflow-hidden">
                   <div
                     class="h-full bg-accent rounded-full"
                     [style.width]="optionShare(opt.count)"
@@ -200,7 +198,7 @@ type ReportPreset = 'month' | '7d' | 'lifetime';
                   <span>{{ paymentLabel(pay.method) }}</span>
                   <span class="text-text-secondary">{{ pay.total | inr }} · {{ pay.count }}</span>
                 </div>
-                <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div class="h-1.5 rounded-full bg-border-subtle overflow-hidden">
                   <div class="h-full bg-status-info rounded-full" [style.width]="paymentShare(pay.total)"></div>
                 </div>
               </div>

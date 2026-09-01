@@ -6,7 +6,6 @@ import { GamingService } from '../../core/services/domain.service';
 import { GamingOption, GamingResource, CustomerFormValue, PricingResult } from '../../shared/models';
 import { InrPipe, DurationPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { CustomerSearchComponent } from '../../shared/components/customer-search.component';
 import { filterResourcesForOption, resourceSelectLabel } from '../../shared/utils/resource-display';
 import { applyDefaultGamingOption } from '../../shared/utils/gaming-defaults';
@@ -18,28 +17,9 @@ import { validateRequiredFields } from '../../shared/utils/form-validation';
 @Component({
   selector: 'app-gaming-entry-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, PageHeaderComponent, CustomerSearchComponent],
-  styles: [
-    `
-      .pricing-override-input-wrap {
-        @apply relative flex items-center;
-      }
-      .pricing-currency {
-        @apply absolute left-3.5 text-text-secondary text-sm font-medium pointer-events-none;
-      }
-      .pricing-override-input {
-        @apply w-full bg-white/[0.04] border border-border rounded-lg pl-8 pr-4 py-2.5 text-text-primary placeholder:text-text-muted/50 focus:outline-none focus:border-accent/35 focus:ring-1 focus:ring-accent/15 min-h-[44px] transition-colors tabular-nums;
-      }
-    `,
-  ],
+  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, CustomerSearchComponent],
   template: `
     <div class="form-page">
-      <app-page-header
-        title="New Gaming Entry"
-        subtitle="Start a walk-in session now"
-        backLink="/admin/gaming"
-      />
-
       <form (ngSubmit)="onSubmit()" class="space-y-4">
         <section class="form-card">
           <app-customer-search (customerChange)="onCustomerChange($event)" />
@@ -144,15 +124,15 @@ import { validateRequiredFields } from '../../shared/utils/form-validation';
             </div>
             <div class="price-card-footer">
               <label class="label mb-2" for="price-override">Custom amount</label>
-              <div class="pricing-override-input-wrap">
-                <span class="pricing-currency">₹</span>
+              <div class="price-currency-input-wrap">
+                <span class="price-currency-prefix">₹</span>
                 <input
                   id="price-override"
                   type="number"
-                  class="pricing-override-input"
+                  class="price-currency-input"
                   [(ngModel)]="priceOverride"
                   name="override"
-                  placeholder="Leave blank to use suggested price"
+                  placeholder="Use suggested price"
                   min="0"
                 />
               </div>

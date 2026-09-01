@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,7 +6,6 @@ import { BookingService, GamingService } from '../../core/services/domain.servic
 import { GamingOption, GamingResource, PricingResult } from '../../shared/models';
 import { InrPipe, DurationPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
-import { PageHeaderComponent } from '../../shared/components/page-header.component';
 import { CustomerSearchComponent } from '../../shared/components/customer-search.component';
 import { CustomerFormValue } from '../../shared/models';
 import { filterResourcesForOption, resourceSelectLabel } from '../../shared/utils/resource-display';
@@ -17,10 +16,20 @@ import { SnackbarService } from '../../core/services/snackbar.service';
 import { validateRequiredFields } from '../../shared/utils/form-validation';
 import { InlineLoaderComponent } from '../../shared/transitions';
 
+interface BookingSessionLine {
+  gamingOptionId: string;
+  resourceId: string;
+  playerCount: number;
+  durationMinutes: number;
+  name: string;
+  description: string;
+  suggestedPrice: number;
+}
+
 @Component({
   selector: 'app-booking-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, PageHeaderComponent, CustomerSearchComponent, InlineLoaderComponent],
+  imports: [CommonModule, FormsModule, InrPipe, DurationPipe, IconComponent, CustomerSearchComponent, InlineLoaderComponent],
   styles: [
     `
       .danger-zone {
@@ -45,12 +54,6 @@ import { InlineLoaderComponent } from '../../shared/transitions';
   ],
   template: `
     <div class="form-page">
-      <app-page-header
-        [title]="isEdit() ? 'Edit Booking' : 'New Booking'"
-        [subtitle]="isEdit() ? 'Update the reserved session' : 'Reserve a station for later'"
-        backLink="/admin/bookings"
-      />
-
       @if (loading()) {
         <app-inline-loader label="Loading booking…" />
       } @else {
@@ -69,56 +72,13 @@ import { InlineLoaderComponent } from '../../shared/transitions';
           <section class="form-card">
             <div class="form-card-header">
               <div class="form-card-icon form-card-icon-accent">
-                <app-icon name="sports_esports" size="sm" />
+                <app-icon name="calendar_today" size="sm" />
               </div>
               <div class="form-card-copy">
-                <p class="form-card-title">Session</p>
-                <p class="form-card-hint">Option, station, time, and players</p>
+                <p class="form-card-title">Schedule</p>
+                <p class="form-card-hint">When the session starts</p>
               </div>
             </div>
-
-            <div>
-              <label class="label">Gaming option</label>
-              <div id="booking-gaming-option" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                @for (opt of options(); track opt._id) {
-                  <button
-                    type="button"
-                    (click)="selectOption(opt._id)"
-                    [class]="optionTileClass(opt._id)"
-                  >
-                    <span class="option-tile-icon">
-                      <app-icon [name]="optionIcon(opt.name)" size="sm" />
-                    </span>
-                    <span class="min-w-0">
-                      <span class="block font-medium truncate">{{ opt.name }}</span>
-                      @if (opt.description) {
-                        <span class="block text-text-muted text-xs mt-0.5 line-clamp-2">{{ opt.description }}</span>
-                      }
-                    </span>
-                  </button>
-                }
-              </div>
-            </div>
-
-            @if (form.gamingOptionId) {
-              <div>
-                <label class="label">{{ resourceFieldLabel() }}</label>
-                <div class="select-wrap has-leading-icon">
-                  <span class="select-icon">
-                    <app-icon [name]="resourceFieldLabel() === 'TV' ? 'tv' : 'memory'" size="sm" />
-                  </span>
-                  <select class="input" [(ngModel)]="form.resourceId" name="resource">
-                    <option value="">Auto-assign later</option>
-                    @for (res of filteredResources(); track res._id) {
-                      <option [value]="res._id">{{ resourceLabel(res) }}</option>
-                    }
-                  </select>
-                  <span class="select-chevron">
-                    <app-icon name="expand_more" size="sm" />
-                  </span>
-                </div>
-              </div>
-            }
 
             <div>
               <label class="label">Date & time</label>
@@ -137,62 +97,231 @@ import { InlineLoaderComponent } from '../../shared/transitions';
             </div>
 
             <div>
-              <label class="label">Duration</label>
-              <div class="choice-row">
-                @for (d of durationOptions(); track d) {
-                  <button
-                    type="button"
-                    (click)="form.durationMinutes = d; recalculatePrice()"
-                    [class]="chipClass(form.durationMinutes === d)"
-                  >
-                    {{ d | duration }}
-                  </button>
-                }
-              </div>
-            </div>
-
-            @if (selectedOption()?.supportsPlayerPricing) {
-              <div>
-                <label class="label">Players</label>
-                <div class="choice-row">
-                  @for (p of playerOptions(); track p) {
-                    <button
-                      type="button"
-                      (click)="form.playerCount = p; recalculatePrice()"
-                      [class]="chipClass(form.playerCount === p)"
-                    >
-                      {{ p }}
-                    </button>
-                  }
-                </div>
-              </div>
-            }
-
-            <div>
-              <label class="label" for="booking-notes">
-                Notes <span class="normal-case tracking-normal font-normal text-text-muted">(optional)</span>
-              </label>
+              <label class="label" for="booking-notes">Notes</label>
               <input id="booking-notes" class="input" [(ngModel)]="form.notes" name="notes" placeholder="Special requests, etc." />
             </div>
           </section>
 
-          @if (pricing()) {
-            <div class="price-card">
-              <div class="price-card-main">
-                <div class="price-card-header">
-                  <app-icon name="payments" size="sm" class="text-accent/70" />
-                  <span class="price-card-label">Estimated price</span>
+          @if (isEdit()) {
+            <section class="form-card">
+              <div class="form-card-header">
+                <div class="form-card-icon form-card-icon-accent">
+                  <app-icon name="sports_esports" size="sm" />
                 </div>
-                <p class="price-card-amount">{{ pricing()!.price | inr }}</p>
-                <p class="price-card-breakdown">{{ pricing()!.breakdown }}</p>
+                <div class="form-card-copy">
+                  <p class="form-card-title">Session</p>
+                  <p class="form-card-hint">Option, station, and players</p>
+                </div>
+              </div>
+
+              <div>
+                <label class="label">Gaming option</label>
+                <div id="booking-gaming-option" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  @for (opt of options(); track opt._id) {
+                    <button type="button" (click)="selectOption(opt._id)" [class]="optionTileClass(opt._id)">
+                      <span class="option-tile-icon">
+                        <app-icon [name]="optionIcon(opt.name)" size="sm" />
+                      </span>
+                      <span class="min-w-0">
+                        <span class="block font-medium truncate">{{ opt.name }}</span>
+                        @if (opt.description) {
+                          <span class="block text-text-muted text-xs mt-0.5 line-clamp-2">{{ opt.description }}</span>
+                        }
+                      </span>
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (form.gamingOptionId) {
+                <div>
+                  <label class="label">{{ resourceFieldLabel() }}</label>
+                  <div class="select-wrap has-leading-icon">
+                    <span class="select-icon">
+                      <app-icon [name]="resourceFieldLabel() === 'TV' ? 'tv' : 'memory'" size="sm" />
+                    </span>
+                    <select class="input" [(ngModel)]="form.resourceId" name="resource">
+                      <option value="">Auto-assign later</option>
+                      @for (res of filteredResources(); track res._id) {
+                        <option [value]="res._id">{{ resourceLabel(res) }}</option>
+                      }
+                    </select>
+                    <span class="select-chevron">
+                      <app-icon name="expand_more" size="sm" />
+                    </span>
+                  </div>
+                </div>
+              }
+
+              <div>
+                <label class="label">Duration</label>
+                <div class="choice-row">
+                  @for (d of durationOptions(); track d) {
+                    <button type="button" (click)="form.durationMinutes = d; recalculatePrice()" [class]="chipClass(form.durationMinutes === d)">
+                      {{ d | duration }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              @if (selectedOption()?.supportsPlayerPricing) {
+                <div>
+                  <label class="label">Players</label>
+                  <div class="choice-row">
+                    @for (p of playerOptions(); track p) {
+                      <button type="button" (click)="form.playerCount = p; recalculatePrice()" [class]="chipClass(form.playerCount === p)">
+                        {{ p }}
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </section>
+
+            @if (pricing()) {
+              <div class="price-card">
+                <div class="price-card-main">
+                  <div class="price-card-header">
+                    <app-icon name="payments" size="sm" class="text-accent/70" />
+                    <span class="price-card-label">Estimated price</span>
+                  </div>
+                  <p class="price-card-amount">{{ pricing()!.price | inr }}</p>
+                  <p class="price-card-breakdown">{{ pricing()!.breakdown }}</p>
+                </div>
+              </div>
+            }
+          } @else {
+            @if (sessionItems().length === 0) {
+              <div class="form-card text-center py-8">
+                <div class="mx-auto mb-3 flex items-center justify-center w-12 h-12 rounded-2xl bg-white/[0.04] text-text-muted">
+                  <app-icon name="sports_esports" size="lg" />
+                </div>
+                <p class="font-medium">No sessions yet</p>
+                <p class="text-sm text-text-muted mt-1">Add gaming options below — e.g. 2 PCs and 2 PS5s</p>
+              </div>
+            } @else {
+              <div class="space-y-2">
+                @for (item of sessionItems(); track $index; let i = $index) {
+                  <div class="session-line-item">
+                    <div class="session-line-icon">
+                      <app-icon [name]="optionIcon(item.name)" size="sm" />
+                    </div>
+                    <div class="session-line-body">
+                      <div class="session-line-header">
+                        <p class="session-line-name">{{ item.name }}</p>
+                        <p class="session-line-amount">{{ item.suggestedPrice | inr }}</p>
+                      </div>
+                      <p class="session-line-meta">{{ item.description }}</p>
+                    </div>
+                    <button type="button" class="session-line-remove" (click)="removeSession(i)" aria-label="Remove session">
+                      <app-icon name="close" size="sm" />
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="rounded-xl border border-border bg-white/[0.03] overflow-hidden">
+              <div class="px-4 pt-4 pb-2 border-b border-border-subtle">
+                <p class="section-heading mb-0">Add session</p>
+              </div>
+              <div class="p-4 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  @for (opt of options(); track opt._id) {
+                    <button type="button" (click)="selectDraftOption(opt._id)" [class]="draftOptionTileClass(opt._id)">
+                      <span class="option-tile-icon">
+                        <app-icon [name]="optionIcon(opt.name)" size="sm" />
+                      </span>
+                      <span class="min-w-0">
+                        <span class="block font-medium truncate">{{ opt.name }}</span>
+                        @if (opt.description) {
+                          <span class="block text-text-muted text-xs mt-0.5 line-clamp-2">{{ opt.description }}</span>
+                        }
+                      </span>
+                    </button>
+                  }
+                </div>
+
+                @if (draftForm.gamingOptionId) {
+                  <div>
+                    <label class="label">{{ draftResourceFieldLabel() }}</label>
+                    <div class="select-wrap has-leading-icon">
+                      <span class="select-icon">
+                        <app-icon [name]="draftResourceFieldLabel() === 'TV' ? 'tv' : 'memory'" size="sm" />
+                      </span>
+                      <select class="input" [(ngModel)]="draftForm.resourceId" name="draftResource" (ngModelChange)="recalculateDraftPrice()">
+                        <option value="">Auto-assign later</option>
+                        @for (res of draftFilteredResources(); track res._id) {
+                          <option [value]="res._id">{{ resourceLabel(res) }}</option>
+                        }
+                      </select>
+                      <span class="select-chevron">
+                        <app-icon name="expand_more" size="sm" />
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="label">Duration</label>
+                    <div class="choice-row">
+                      @for (d of draftDurationOptions(); track d) {
+                        <button type="button" (click)="draftForm.durationMinutes = d; recalculateDraftPrice()" [class]="chipClass(draftForm.durationMinutes === d)">
+                          {{ d | duration }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+
+                  @if (draftSelectedOption()?.supportsPlayerPricing) {
+                    <div>
+                      <label class="label">Players</label>
+                      <div class="choice-row">
+                        @for (p of draftPlayerOptions(); track p) {
+                          <button type="button" (click)="draftForm.playerCount = p; recalculateDraftPrice()" [class]="chipClass(draftForm.playerCount === p)">
+                            {{ p }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  @if (draftPricing()) {
+                    <div class="flex items-center justify-between gap-3 pt-1">
+                      <div>
+                        <p class="text-xs text-text-muted uppercase tracking-caption">Line price</p>
+                        <p class="text-lg font-bold text-accent tabular-nums">{{ draftPricing()!.price | inr }}</p>
+                      </div>
+                      <button type="button" class="btn-primary text-sm py-2 px-4 min-h-0 shrink-0" (click)="addSession()">
+                        <app-icon name="add" size="sm" />
+                        Add
+                      </button>
+                    </div>
+                  }
+                }
               </div>
             </div>
+
+            @if (sessionItems().length) {
+              <div class="price-card">
+                <div class="price-card-main">
+                  <div class="price-card-header">
+                    <app-icon name="payments" size="sm" class="text-accent/70" />
+                    <span class="price-card-label">Total estimate · {{ sessionItems().length }} session{{ sessionItems().length === 1 ? '' : 's' }}</span>
+                  </div>
+                  <p class="price-card-amount">{{ totalEstimate() | inr }}</p>
+                </div>
+              </div>
+            }
           }
 
           <div class="form-actions">
             <button type="submit" class="btn-primary w-full" [disabled]="submitting()">
               <app-icon name="event_available" size="sm" />
-              {{ isEdit() ? 'Save Changes' : 'Create Booking' }}
+              @if (isEdit()) {
+                {{ submitting() ? 'Saving…' : 'Save Changes' }}
+              } @else {
+                {{ submitting() ? 'Creating…' : sessionItems().length > 1 ? 'Create ' + sessionItems().length + ' Bookings' : 'Create Booking' }}
+              }
             </button>
           </div>
 
@@ -226,6 +355,8 @@ export class BookingFormComponent implements OnInit {
   options = signal<GamingOption[]>([]);
   resources = signal<GamingResource[]>([]);
   pricing = signal<PricingResult | null>(null);
+  draftPricing = signal<PricingResult | null>(null);
+  sessionItems = signal<BookingSessionLine[]>([]);
   submitting = signal(false);
   loading = signal(false);
   isEdit = signal(false);
@@ -243,6 +374,15 @@ export class BookingFormComponent implements OnInit {
     notes: '',
   };
 
+  draftForm = {
+    gamingOptionId: '',
+    resourceId: '',
+    durationMinutes: 60,
+    playerCount: 1,
+  };
+
+  totalEstimate = computed(() => this.sessionItems().reduce((sum, item) => sum + item.suggestedPrice, 0));
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
@@ -254,6 +394,8 @@ export class BookingFormComponent implements OnInit {
     this.gamingService.getOptions().subscribe((o) => {
       this.options.set(o);
       if (!id) {
+        this.applyDefaultDraftOption(o);
+      } else {
         const defaultId = applyDefaultGamingOption(o);
         if (defaultId) {
           this.form.gamingOptionId = defaultId;
@@ -304,9 +446,14 @@ export class BookingFormComponent implements OnInit {
   filteredResources = () =>
     filterResourcesForOption(this.resources(), this.form.gamingOptionId, !!this.selectedOption()?.supportsPlayerPricing);
 
+  draftFilteredResources = () =>
+    filterResourcesForOption(this.resources(), this.draftForm.gamingOptionId, !!this.draftSelectedOption()?.supportsPlayerPricing);
+
   resourceLabel = resourceSelectLabel;
   selectedOption = () => this.options().find((o) => o._id === this.form.gamingOptionId);
+  draftSelectedOption = () => this.options().find((o) => o._id === this.draftForm.gamingOptionId);
   resourceFieldLabel = () => (this.selectedOption()?.supportsPlayerPricing ? 'TV' : 'Resource');
+  draftResourceFieldLabel = () => (this.draftSelectedOption()?.supportsPlayerPricing ? 'TV' : 'Resource');
   optionIcon = gamingOptionIcon;
 
   chipClass(selected: boolean): string {
@@ -317,10 +464,20 @@ export class BookingFormComponent implements OnInit {
     return `option-tile ${this.form.gamingOptionId === optionId ? 'option-tile-selected' : ''}`;
   }
 
+  draftOptionTileClass(optionId: string): string {
+    return `option-tile ${this.draftForm.gamingOptionId === optionId ? 'option-tile-selected' : ''}`;
+  }
+
   selectOption(optionId: string) {
     if (this.form.gamingOptionId === optionId) return;
     this.form.gamingOptionId = optionId;
     this.onOptionChange();
+  }
+
+  selectDraftOption(optionId: string) {
+    if (this.draftForm.gamingOptionId === optionId) return;
+    this.draftForm.gamingOptionId = optionId;
+    this.onDraftOptionChange();
   }
 
   playerOptions = () => {
@@ -329,7 +486,14 @@ export class BookingFormComponent implements OnInit {
     return Array.from({ length: opt.maxPlayers - opt.minPlayers + 1 }, (_, i) => opt.minPlayers + i);
   };
 
+  draftPlayerOptions = () => {
+    const opt = this.draftSelectedOption();
+    if (!opt) return [1];
+    return Array.from({ length: opt.maxPlayers - opt.minPlayers + 1 }, (_, i) => opt.minPlayers + i);
+  };
+
   durationOptions = () => getDurationOptions(this.selectedOption(), 'booking');
+  draftDurationOptions = () => getDurationOptions(this.draftSelectedOption(), 'booking');
 
   onCustomerChange(details: CustomerFormValue | null) {
     this.customerDetails.set(details);
@@ -343,6 +507,21 @@ export class BookingFormComponent implements OnInit {
     this.recalculatePrice();
   }
 
+  onDraftOptionChange() {
+    this.draftForm.resourceId = '';
+    const opt = this.draftSelectedOption();
+    this.draftForm.playerCount = opt?.minPlayers || 1;
+    this.draftForm.durationMinutes = opt?.minDurationMinutes || 60;
+    this.recalculateDraftPrice();
+  }
+
+  applyDefaultDraftOption(options: GamingOption[]) {
+    const defaultId = applyDefaultGamingOption(options);
+    if (!defaultId) return;
+    this.draftForm.gamingOptionId = defaultId;
+    this.onDraftOptionChange();
+  }
+
   recalculatePrice() {
     if (!this.form.gamingOptionId) return;
     this.gamingService
@@ -350,14 +529,59 @@ export class BookingFormComponent implements OnInit {
       .subscribe((p) => this.pricing.set(p));
   }
 
+  recalculateDraftPrice() {
+    if (!this.draftForm.gamingOptionId) return;
+    this.gamingService
+      .calculatePrice(this.draftForm.gamingOptionId, this.draftForm.playerCount, this.draftForm.durationMinutes)
+      .subscribe((p) => this.draftPricing.set(p));
+  }
+
+  addSession() {
+    const opt = this.draftSelectedOption();
+    const pricing = this.draftPricing();
+    if (!opt || !pricing) return;
+
+    const durationLabel = this.formatDurationLabel(this.draftForm.durationMinutes);
+    const descParts = [durationLabel];
+    if (opt.supportsPlayerPricing) descParts.push(`${this.draftForm.playerCount} player(s)`);
+    if (this.draftForm.resourceId) {
+      const res = this.resources().find((r) => r._id === this.draftForm.resourceId);
+      if (res) descParts.push(resourceSelectLabel(res));
+    }
+
+    this.sessionItems.update((items) => [
+      ...items,
+      {
+        gamingOptionId: opt._id,
+        resourceId: this.draftForm.resourceId,
+        playerCount: this.draftForm.playerCount,
+        durationMinutes: this.draftForm.durationMinutes,
+        name: opt.name,
+        description: descParts.join(' · '),
+        suggestedPrice: pricing.price,
+      },
+    ]);
+
+    this.applyDefaultDraftOption(this.options());
+  }
+
+  removeSession(index: number) {
+    this.sessionItems.update((items) => items.filter((_, i) => i !== index));
+  }
+
+  formatDurationLabel(minutes: number): string {
+    if (minutes < 60) return `${minutes} min`;
+    const hours = minutes / 60;
+    return Number.isInteger(hours) ? `${hours} hr` : `${hours.toFixed(1)} hr`;
+  }
+
   onSubmit() {
     const customer = this.customerDetails();
     if (
       !validateRequiredFields(
         [
-          { id: 'booking-customer-name', label: 'Customer Name', valid: () => !!customer?.name.trim() },
+          { id: 'booking-customer-name', label: 'Customer', valid: () => !!customer?.name.trim() },
           { id: 'booking-customer-phone', label: 'Phone', valid: () => !!customer?.phone.trim() },
-          { id: 'booking-gaming-option', label: 'Gaming Option', valid: () => !!this.form.gamingOptionId },
           { id: 'booking-scheduled-start', label: 'Date & Time', valid: () => !!this.form.scheduledStart },
         ],
         this.snackbar
@@ -366,25 +590,43 @@ export class BookingFormComponent implements OnInit {
       return;
     }
 
+    if (this.isEdit()) {
+      if (
+        !validateRequiredFields(
+          [{ id: 'booking-gaming-option', label: 'Gaming Option', valid: () => !!this.form.gamingOptionId }],
+          this.snackbar
+        )
+      ) {
+        return;
+      }
+      this.submitEdit(customer!);
+      return;
+    }
+
+    if (!this.sessionItems().length) {
+      this.snackbar.warning('Add at least one session');
+      return;
+    }
+
+    this.submitCreate(customer!);
+  }
+
+  private submitEdit(customer: CustomerFormValue) {
     const payload = {
       ...this.form,
-      customerId: customer!.customerId,
-      customerName: customer!.name.trim(),
-      customerPhone: customer!.phone.trim(),
+      customerId: customer.customerId,
+      customerName: customer.name.trim(),
+      customerPhone: customer.phone.trim(),
       scheduledStart: new Date(this.form.scheduledStart).toISOString(),
       resourceId: this.form.resourceId || null,
       notes: this.form.notes.trim() || undefined,
     };
 
     this.submitting.set(true);
-    const request = this.isEdit()
-      ? this.bookingService.update(this.bookingId()!, payload)
-      : this.bookingService.create({ ...payload, resourceId: this.form.resourceId || undefined });
-
-    request.subscribe({
+    this.bookingService.update(this.bookingId()!, payload).subscribe({
       next: () => {
         this.submitting.set(false);
-        this.snackbar.success(this.isEdit() ? 'Booking updated' : 'Booking created');
+        this.snackbar.success('Booking updated');
         this.router.navigate(['/admin/bookings']);
       },
       error: (err) => {
@@ -392,6 +634,48 @@ export class BookingFormComponent implements OnInit {
         this.snackbar.error(err.error?.error || 'Failed to save booking');
       },
     });
+  }
+
+  private submitCreate(customer: CustomerFormValue) {
+    const items = this.sessionItems();
+    this.submitting.set(true);
+
+    const createNext = (index: number) => {
+      if (index >= items.length) {
+        this.submitting.set(false);
+        this.snackbar.success(items.length > 1 ? `${items.length} bookings created` : 'Booking created');
+        this.router.navigate(['/admin/bookings']);
+        return;
+      }
+
+      const item = items[index];
+      this.bookingService
+        .create({
+          customerId: customer.customerId,
+          customerName: customer.name.trim(),
+          customerPhone: customer.phone.trim(),
+          scheduledStart: new Date(this.form.scheduledStart).toISOString(),
+          notes: this.form.notes.trim() || undefined,
+          gamingOptionId: item.gamingOptionId,
+          resourceId: item.resourceId || undefined,
+          playerCount: item.playerCount,
+          durationMinutes: item.durationMinutes,
+        })
+        .subscribe({
+          next: () => createNext(index + 1),
+          error: (err) => {
+            this.submitting.set(false);
+            const msg = err.error?.error || 'Failed to create booking';
+            if (index > 0) {
+              this.snackbar.error(`${msg} (${index} of ${items.length} created)`);
+            } else {
+              this.snackbar.error(msg);
+            }
+          },
+        });
+    };
+
+    createNext(0);
   }
 
   cancelBooking() {

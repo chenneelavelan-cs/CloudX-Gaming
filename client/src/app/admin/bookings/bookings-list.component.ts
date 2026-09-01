@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
 import { BookingService } from '../../core/services/domain.service';
+import { PageActionsService } from '../../core/services/page-actions.service';
+import { PageTitleService } from '../../core/services/page-title.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
 import { Booking } from '../../shared/models';
 import { InrPipe, DurationPipe } from '../../shared/pipes/format.pipes';
@@ -30,31 +32,18 @@ import { PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, Number
         @apply text-text-secondary hover:bg-white/[0.05] hover:text-text-primary no-underline;
       }
       .action-edit-disabled {
-        @apply text-text-muted/40 cursor-not-allowed pointer-events-none;
+        @apply text-text-muted opacity-40 cursor-not-allowed pointer-events-none;
       }
       .action-cancel {
-        @apply text-status-danger/90 hover:bg-status-danger/10 hover:text-status-danger;
+        @apply text-status-danger hover:bg-status-danger/5 hover:text-status-danger;
       }
       .action-divider {
-        @apply w-px bg-white/[0.06] self-stretch;
+        @apply w-px bg-border-subtle self-stretch;
       }
     `,
   ],
   template: `
     <div class="t-page-enter" tPageEnter>
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2.5">
-        <h1 class="page-heading mb-0">Bookings</h1>
-        @if (bookings().length) {
-          <span class="badge-info"><app-number-pop-in [value]="bookings().length" /></span>
-        }
-      </div>
-      <a routerLink="/admin/bookings/new" class="btn-primary text-sm py-2 px-4 min-h-0">
-        <app-icon name="add" size="sm" />
-        Booking
-      </a>
-    </div>
-
     <div class="mb-4">
       <label class="label">Date</label>
       <div class="relative">
@@ -66,14 +55,10 @@ import { PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, Number
     </div>
 
     @if (bookings().length) {
-      <div class="grid grid-cols-3 gap-2 mb-4">
+      <div class="grid grid-cols-2 gap-2 mb-4">
         <div class="stat-card py-3">
-          <p class="text-text-muted text-[10px] uppercase tracking-caption">Total</p>
+          <p class="text-text-muted text-[10px] uppercase tracking-caption">Bookings</p>
           <p class="text-lg font-semibold"><app-number-pop-in [value]="bookings().length" /></p>
-        </div>
-        <div class="stat-card py-3">
-          <p class="text-text-muted text-[10px] uppercase tracking-caption">Ready</p>
-          <p class="text-lg font-semibold text-status-info"><app-number-pop-in [value]="readyCount()" /></p>
         </div>
         <div class="stat-card py-3">
           <p class="text-text-muted text-[10px] uppercase tracking-caption">Revenue</p>
@@ -88,7 +73,7 @@ import { PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, Number
     <div class="space-y-3 t-list-stagger">
       @for (booking of bookings(); track booking._id; let i = $index) {
         <div class="session-card t-list-item" [style.--i]="i">
-          <div class="session-card-accent" [class]="statusAccent(booking.status)"></div>
+          <div class="session-card-accent" [class]="cardAccent(booking.status)"></div>
           <div class="p-4 pl-5">
             <div class="flex items-start gap-3">
               <div class="w-10 h-10 rounded-xl bg-accent/12 flex items-center justify-center text-accent text-xs font-semibold shrink-0">
@@ -97,10 +82,7 @@ import { PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, Number
               <div class="flex-1 min-w-0">
                 <div class="flex items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <p class="font-semibold text-base leading-tight">{{ booking.customerName }}</p>
-                      <span [class]="statusBadge(booking.status)">{{ booking.status }}</span>
-                    </div>
+                    <p class="font-semibold text-base leading-tight">{{ booking.customerName }}</p>
                     <p class="text-text-muted text-sm font-mono mt-0.5">{{ booking.customerPhone }}</p>
                   </div>
                   @if (booking.suggestedPrice) {
@@ -196,6 +178,8 @@ import { PageEnterDirective, ListStaggerDirective, InlineLoaderComponent, Number
 export class BookingsListComponent implements OnInit {
   private bookingService = inject(BookingService);
   private snackbar = inject(SnackbarService);
+  private pageActionsService = inject(PageActionsService);
+  private pageTitleService = inject(PageTitleService);
   bookings = signal<Booking[]>([]);
   selectedDate = new Date().toISOString().split('T')[0];
   page = signal(1);
@@ -203,16 +187,23 @@ export class BookingsListComponent implements OnInit {
   loading = signal(true);
   loadingMore = signal(false);
 
-  readyCount = computed(() =>
-    this.bookings().filter((b) => b.status === 'confirmed' || b.status === 'scheduled').length
-  );
-
   totalRevenue = computed(() =>
     this.bookings().reduce((sum, b) => sum + (b.suggestedPrice || 0), 0)
   );
 
   ngOnInit() {
+    this.pageActionsService.set([
+      { kind: 'link', label: 'Booking', routerLink: '/admin/bookings/new', icon: 'add', primary: true },
+    ]);
     this.loadBookings();
+  }
+
+  private syncBookingsHeader() {
+    const count = this.bookings().length;
+    this.pageTitleService.set({
+      title: 'Bookings',
+      badge: count > 0 ? count : undefined,
+    });
   }
 
   loadBookings() {
@@ -225,10 +216,12 @@ export class BookingsListComponent implements OnInit {
       next: (res) => {
         this.bookings.set(res.items ?? []);
         this.hasMore.set(res.hasMore ?? false);
+        this.syncBookingsHeader();
       },
       error: () => {
         this.bookings.set([]);
         this.hasMore.set(false);
+        this.syncBookingsHeader();
       },
     });
   }
@@ -243,6 +236,7 @@ export class BookingsListComponent implements OnInit {
         this.page.set(nextPage);
         this.hasMore.set(res.hasMore ?? false);
         this.loadingMore.set(false);
+        this.syncBookingsHeader();
       },
       error: () => this.loadingMore.set(false),
     });
@@ -269,7 +263,7 @@ export class BookingsListComponent implements OnInit {
   }
 
   isActionable(status: string): boolean {
-    return ['scheduled', 'confirmed', 'started'].includes(status);
+    return status === 'scheduled' || status === 'confirmed';
   }
 
   canEdit(status: string): boolean {
@@ -290,27 +284,9 @@ export class BookingsListComponent implements OnInit {
       .toUpperCase();
   }
 
-  statusBadge(status: string): string {
-    const map: Record<string, string> = {
-      confirmed: 'badge-info',
-      scheduled: 'badge-info',
-      started: 'badge-active',
-      completed: 'badge-active',
-      cancelled: 'badge-danger',
-      no_show: 'badge-danger',
-    };
-    return map[status] || 'badge';
-  }
-
-  statusAccent(status: string): string {
-    const map: Record<string, string> = {
-      confirmed: 'bg-status-info',
-      scheduled: 'bg-status-info',
-      started: 'bg-status-active',
-      completed: 'bg-status-active/50',
-      cancelled: 'bg-status-danger',
-      no_show: 'bg-status-danger',
-    };
-    return map[status] || 'bg-border-medium';
+  cardAccent(status: string): string {
+    if (status === 'cancelled' || status === 'no_show') return 'bg-status-danger/70';
+    if (status === 'completed') return 'bg-border-medium';
+    return 'bg-accent';
   }
 }
