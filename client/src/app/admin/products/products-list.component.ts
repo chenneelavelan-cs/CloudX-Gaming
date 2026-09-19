@@ -8,6 +8,9 @@ import { SnackbarService } from '../../core/services/snackbar.service';
 import { Product, ProductFormValue, Combo, ComboFormValue } from '../../shared/models';
 import { InrPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
+import { MediaImageComponent } from '../../shared/components/media-image.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state.component';
+import { productImagePath, slugify } from '../../shared/utils/media-paths';
 import { validateRequiredFields } from '../../shared/utils/form-validation';
 import { collectGroups, groupLabel, normalizeGroup } from '../../shared/utils/product-groups';
 import { isComboMustTry } from '../../shared/utils/combo-display';
@@ -20,7 +23,7 @@ type ComboModalMode = 'create' | 'edit';
 @Component({
   selector: 'app-products-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, InrPipe, IconComponent, TabsSlidingDirective, PageEnterDirective, InlineLoaderComponent, CardTiltDirective],
+  imports: [CommonModule, FormsModule, InrPipe, IconComponent, MediaImageComponent, EmptyStateComponent, TabsSlidingDirective, PageEnterDirective, InlineLoaderComponent, CardTiltDirective],
   template: `
     <div class="t-page-enter" tPageEnter>
       <div class="app-tabs mb-5" role="tablist" [tTabsActiveIndex]="activeTab() === 'products' ? 0 : 1">
@@ -38,16 +41,16 @@ type ComboModalMode = 'create' | 'edit';
       } @else {
         @if (activeTab() === 'products') {
           @if (products().length === 0) {
-            <div class="card text-center py-12">
-              <div class="flex justify-center mb-3 text-text-muted">
-                <app-icon name="restaurant" size="xl" />
-              </div>
-              <p class="text-text-muted">No products yet</p>
-              <button type="button" class="btn-primary inline-flex mt-4 text-sm py-2 px-4 min-h-0" (click)="openCreate()">
+            <app-empty-state
+              title="No products yet"
+              description="Add snacks and drinks to show on the public menu."
+              icon="restaurant"
+            >
+              <button emptyAction type="button" class="btn-primary inline-flex mt-4 text-sm py-2 px-4 min-h-0" (click)="openCreate()">
                 <app-icon name="add" size="sm" />
                 Add first product
               </button>
-            </div>
+            </app-empty-state>
           } @else {
             @for (group of productGroups(); track group) {
               <h2 class="section-heading mt-5 mb-2.5 first:mt-0">{{ groupLabel(group) }}</h2>
@@ -55,6 +58,16 @@ type ComboModalMode = 'create' | 'edit';
                 @for (p of getByGroup(group); track p._id) {
                   <div class="list-row t-tilt !p-0 overflow-hidden">
                     <div class="t-tilt-card flex items-center gap-3 px-4 py-3.5 w-full">
+                      <div class="product-thumb">
+                        <app-media-image
+                          [src]="productImage(p)"
+                          [alt]="p.name"
+                          aspect="square"
+                          fallbackIcon="local_cafe"
+                          fallbackClass="media-image-fallback--product"
+                          fallbackIconSize="sm"
+                        />
+                      </div>
                       <div class="flex-1 min-w-0 relative z-[1]">
                         <p class="font-medium flex items-center gap-1.5 truncate">
                           @if (p.mustTry) {
@@ -443,6 +456,10 @@ export class ProductsListComponent implements OnInit {
   comboForm: ComboFormValue = this.emptyComboForm();
 
   productGroups = computed(() => collectGroups(this.products()));
+
+  productImage(p: Product): string {
+    return productImagePath(slugify(p.name));
+  }
 
   allGroups = computed(() => {
     const fromProducts = collectGroups(this.products());

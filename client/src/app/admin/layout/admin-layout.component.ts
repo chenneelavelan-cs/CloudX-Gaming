@@ -8,11 +8,12 @@ import { PageActionsService } from '../../core/services/page-actions.service';
 import { PageTitleService } from '../../core/services/page-title.service';
 import { IconComponent } from '../../shared/components/icon.component';
 import { SnackbarComponent } from '../../shared/components/snackbar.component';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 
 @Component({
   selector: 'app-admin-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, IconComponent, SnackbarComponent],
+  imports: [CommonModule, RouterModule, IconComponent, SnackbarComponent, ConfirmDialogComponent],
   template: `
     <div class="min-h-screen flex flex-col bg-bg-primary">
       <nav class="global-nav" aria-label="Global">
@@ -139,6 +140,7 @@ import { SnackbarComponent } from '../../shared/components/snackbar.component';
       </aside>
 
       <app-snackbar />
+      <app-confirm-dialog />
     </div>
   `,
   styles: [

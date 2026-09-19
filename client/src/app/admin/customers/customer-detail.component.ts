@@ -5,6 +5,7 @@ import { CustomerService } from '../../core/services/domain.service';
 import { PageTitleService } from '../../core/services/page-title.service';
 import { PageActionsService } from '../../core/services/page-actions.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { Booking, Bill, CustomerHistory, GamingEntry } from '../../shared/models';
 import { InrPipe, DurationPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
@@ -299,6 +300,7 @@ export class CustomerDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private snackbar = inject(SnackbarService);
+  private confirmDialog = inject(ConfirmDialogService);
   private pageTitleService = inject(PageTitleService);
   private pageActionsService = inject(PageActionsService);
 
@@ -508,16 +510,25 @@ export class CustomerDetailComponent implements OnInit {
   confirmDelete() {
     const customer = this.history()?.customer;
     if (!customer) return;
-    if (!confirm(`Delete ${customer.name}? This cannot be undone.`)) return;
 
-    this.customerService.delete(customer._id).subscribe({
-      next: () => {
-        this.snackbar.success('Customer deleted');
-        this.router.navigate(['/admin/customers']);
-      },
-      error: (err) => {
-        this.snackbar.error(err.error?.error || 'Failed to delete customer');
-      },
-    });
+    this.confirmDialog
+      .confirm({
+        title: `Delete ${customer.name}?`,
+        message: 'This removes the customer and cannot be undone.',
+        confirmLabel: 'Delete',
+        danger: true,
+      })
+      .then((confirmed) => {
+        if (!confirmed) return;
+        this.customerService.delete(customer._id).subscribe({
+          next: () => {
+            this.snackbar.success('Customer deleted');
+            this.router.navigate(['/admin/customers']);
+          },
+          error: (err) => {
+            this.snackbar.error(err.error?.error || 'Failed to delete customer');
+          },
+        });
+      });
   }
 }

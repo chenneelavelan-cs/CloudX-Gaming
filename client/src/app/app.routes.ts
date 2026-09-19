@@ -2,24 +2,29 @@ import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  // Public routes
   {
     path: '',
-    loadComponent: () => import('./public/home/home.component').then((m) => m.HomeComponent),
-  },
-  {
-    path: 'book',
-    loadComponent: () => import('./public/book/public-book.component').then((m) => m.PublicBookComponent),
+    loadComponent: () =>
+      import('./public/layout/public-layout.component').then((m) => m.PublicLayoutComponent),
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./public/home/home.component').then((m) => m.HomeComponent),
+      },
+      {
+        path: 'book',
+        loadComponent: () =>
+          import('./public/book/public-book.component').then((m) => m.PublicBookComponent),
+      },
+    ],
   },
 
-  // Admin login
   {
     path: 'admin/login',
     canActivate: [guestGuard],
     loadComponent: () => import('./admin/login/login.component').then((m) => m.AdminLoginComponent),
   },
 
-  // Admin routes
   {
     path: 'admin',
     canActivate: [authGuard],

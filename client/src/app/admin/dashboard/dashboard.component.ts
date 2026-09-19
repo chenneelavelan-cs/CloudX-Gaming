@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { interval, Subscription } from 'rxjs';
 import { GamingService, AnalyticsService, BookingService } from '../../core/services/domain.service';
 import { SnackbarService } from '../../core/services/snackbar.service';
+import { ConfirmDialogService } from '../../core/services/confirm-dialog.service';
 import { GamingEntry, Booking, DashboardSummary } from '../../shared/models';
 import { InrPipe } from '../../shared/pipes/format.pipes';
 import { IconComponent } from '../../shared/components/icon.component';
@@ -256,6 +257,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private analyticsService = inject(AnalyticsService);
   private bookingService = inject(BookingService);
   private snackbar = inject(SnackbarService);
+  private confirmDialog = inject(ConfirmDialogService);
 
   sessions = signal<GamingEntry[]>([]);
   summary = signal<DashboardSummary | null>(null);
@@ -367,16 +369,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  endSession(id: string) {
-    if (confirm('End this session?')) {
-      this.gamingService.endSession(id).subscribe({
-        next: () => {
-          this.loadData();
-          this.snackbar.success('Session ended');
-        },
-        error: (err) => this.snackbar.error(err.error?.error || 'Failed to end session'),
-      });
-    }
+  async endSession(id: string) {
+    const confirmed = await this.confirmDialog.confirm({
+      title: 'End session?',
+      message: 'This will stop the timer and mark the session as completed.',
+      confirmLabel: 'End session',
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    this.gamingService.endSession(id).subscribe({
+      next: () => {
+        this.loadData();
+        this.snackbar.success('Session ended');
+      },
+      error: (err) => this.snackbar.error(err.error?.error || 'Failed to end session'),
+    });
   }
 
   startGaming(id: string) {
